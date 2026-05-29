@@ -27,6 +27,8 @@ const saveAccounts      = a => { try { localStorage.setItem('ic_accounts', JSON.
 const loadAccounts      = ()  => { try { return JSON.parse(localStorage.getItem('ic_accounts') || '[]'); } catch { return []; } };
 const saveSubscriptions = s => { try { localStorage.setItem('ic_subs', JSON.stringify(s)); } catch {} };
 const loadSubscriptions = ()  => { try { return JSON.parse(localStorage.getItem('ic_subs') || '[]'); } catch { return []; } };
+const saveUnsubscribed  = s => { try { localStorage.setItem('ic_unsub_memory', JSON.stringify([...s])); } catch {} };
+const loadUnsubscribed  = ()  => { try { return new Set(JSON.parse(localStorage.getItem('ic_unsub_memory') || '[]')); } catch { return new Set(); } };
 
 function ls(key, def) { try { return JSON.parse(localStorage.getItem(key) ?? 'null') ?? def; } catch { return def; } }
 function lsSet(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} }
@@ -479,7 +481,9 @@ function Dashboard({ accounts, subscriptions, scanTs, totalScanned, onAddAccount
   const [upgraded, setUpgraded]       = useState(false);
   const [hoveredRow, setHoveredRow]   = useState(null);
   const [accountFilter, setAccountFilter] = useState('all');
-  const [pendingRows, setPendingRows] = useState(new Set()); // rows mid-unsubscribe
+  const [pendingRows, setPendingRows] = useState(new Set());
+  const [search, setSearch]           = useState('');
+  const [unsubMemory, setUnsubMemory] = useState(loadUnsubscribed);
 
   const checkLimit = (needed = 1) => {
     if (!upgraded && actionCount + needed > FREE_LIMIT) { setShowPaywall(true); return false; }
@@ -487,6 +491,12 @@ function Dashboard({ accounts, subscriptions, scanTs, totalScanned, onAddAccount
   };
 
   const removeRow = (id) => setRows(p => p.filter(s => s.id !== id));
+
+  const recordUnsub = (email) => {
+    setUnsubMemory(prev => {
+      const next = new Set(prev); next.add(email.toLowerCase()); saveUnsubscribed(next); return next;
+    });
+  };
 
   // Real unsubscribe — calls the backend which handles List-Unsubscribe
   const handleUnsubscribe = async (sub) => {
@@ -508,6 +518,7 @@ function Dashboard({ accounts, subscriptions, scanTs, totalScanned, onAddAccount
     } finally {
       setPendingRows(p => { const n = new Set(p); n.delete(sub.id); return n; });
       removeRow(sub.id);
+      recordUnsub(sub.email);
       setActionCount(c => c + 1);
       setSelected(p => { const n = new Set(p); n.delete(sub.id); return n; });
     }
@@ -545,9 +556,12 @@ function Dashboard({ accounts, subscriptions, scanTs, totalScanned, onAddAccount
   const toggleSelect = id => setSelected(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   const categories = ['All', ...Array.from(new Set(rows.map(s => s.category)))];
+  const searchQ = search.trim().toLowerCase();
   const filtered = rows
     .filter(s => filter === 'All' || s.category === filter)
-    .filter(s => accountFilter === 'all' || s.grant_id === accountFilter);
+    .filter(s => accountFilter === 'all' || s.grant_id === accountFilter)
+    .filter(s => !searchQ || s.sender.toLowerCase().includes(searchQ) || s.email.toLowerCase().includes(searchQ))
+    .map(s => ({ ...s, resubscribed: unsubMemory.has(s.email.toLowerCase()) }));
   const allSelected   = filtered.length > 0 && filtered.every(s => selected.has(s.id));
   const freeRemaining = Math.max(0, FREE_LIMIT - actionCount);
 
@@ -599,6 +613,37 @@ function Dashboard({ accounts, subscriptions, scanTs, totalScanned, onAddAccount
           </div>
         </div>
       )}
+
+      {/* Search + Export row */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
+        <div style={{ position: 'relative', flex: 1 }}>
+          <svg style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input
+            type="search"
+            placeholder="Search sender or email…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{ width: '100%', padding: '7px 10px 7px 30px', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+          />
+          {search && (
+            <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, display: 'flex' }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          )}
+        </div>
+        <button onClick={() => {
+          const header = 'Sender,Email,Category,Frequency,Emails\n';
+          const csvRows = filtered.map(s => `"${s.sender}","${s.email}","${s.category}","${s.frequency}",${s.totalEmails}`).join('\n');
+          const blob = new Blob([header + csvRows], { type: 'text/csv' });
+          const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+          a.download = 'inbox-cleaner-subscriptions.csv'; a.click();
+        }}
+          title="Export to CSV"
+          style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', borderRadius: 10, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export CSV
+        </button>
+      </div>
 
       {/* Category filters */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
@@ -657,7 +702,12 @@ function Dashboard({ accounts, subscriptions, scanTs, totalScanned, onAddAccount
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                   <div style={{ width: 34, height: 34, borderRadius: 9, background: sub.logoColor, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 13, fontWeight: 800, flexShrink: 0 }}>{sub.logoInitial}</div>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub.sender}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub.sender}</div>
+                      {sub.resubscribed && (
+                        <span title="You previously unsubscribed from this sender" style={{ padding: '1px 6px', borderRadius: 8, fontSize: 9, fontWeight: 700, background: 'rgba(169,65,64,0.12)', color: 'var(--red)', whiteSpace: 'nowrap', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Re-subscribed</span>
+                      )}
+                    </div>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub.email}</div>
                   </div>
                 </div>
@@ -668,7 +718,7 @@ function Dashboard({ accounts, subscriptions, scanTs, totalScanned, onAddAccount
                 </div>
                 {/* Row actions */}
                 <div style={{ display: 'flex', gap: 4 }}>
-                  <button onClick={() => handleUnsubscribe(sub.id, sub.sender)} title="Unsubscribe"
+                  <button onClick={() => handleUnsubscribe(sub)} title="Unsubscribe"
                     style={{ padding: '6px 10px', background: hoveredRow === sub.id ? 'rgba(169,71,64,0.12)' : 'rgba(169,71,64,0.07)', color: 'var(--red)', border: '1px solid rgba(169,71,64,0.20)', borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
                     <Trash2 size={12} /> Unsub
                   </button>
@@ -799,6 +849,12 @@ export default function InboxCleanerPage() {
       });
     }
   };
+
+  // Auto-scan on mount when accounts connected but no cached results
+  useEffect(() => {
+    if (accounts.length > 0 && subscriptions.length === 0) handleScan();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleConnect = async () => {
     setConnecting(true); setConnectError(null);
