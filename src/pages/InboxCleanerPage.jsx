@@ -543,10 +543,32 @@ function Dashboard({ accounts, subscriptions, scanTs, totalScanned, onAddAccount
 
   const toggleSelect = id => setSelected(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
+  // ── Sorting ──
+  const [sortKey, setSortKey]   = useState('totalEmails'); // default: most emails first
+  const [sortDir, setSortDir]   = useState('desc');
+
+  const FREQ_ORDER = { 'Daily': 5, '2x / week': 4, 'Weekly': 3, 'Monthly': 2, 'Occasional': 1 };
+
+  const handleSort = (key) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir('asc'); }
+  };
+
   const categories = ['All', ...Array.from(new Set(rows.map(s => s.category)))];
   const filtered = rows
     .filter(s => filter === 'All' || s.category === filter)
-    .filter(s => accountFilter === 'all' || s.grant_id === accountFilter);
+    .filter(s => accountFilter === 'all' || s.grant_id === accountFilter)
+    .slice()
+    .sort((a, b) => {
+      let av, bv;
+      if (sortKey === 'sender')      { av = a.sender.toLowerCase();        bv = b.sender.toLowerCase(); }
+      else if (sortKey === 'category')  { av = a.category;                    bv = b.category; }
+      else if (sortKey === 'frequency') { av = FREQ_ORDER[a.frequency] || 0;  bv = FREQ_ORDER[b.frequency] || 0; }
+      else                              { av = a.totalEmails;                  bv = b.totalEmails; }
+      if (av < bv) return sortDir === 'asc' ? -1 : 1;
+      if (av > bv) return sortDir === 'asc' ?  1 : -1;
+      return 0;
+    });
   const allSelected   = filtered.length > 0 && filtered.every(s => selected.has(s.id));
   const freeRemaining = Math.max(0, FREE_LIMIT - actionCount);
 
@@ -614,14 +636,29 @@ function Dashboard({ accounts, subscriptions, scanTs, totalScanned, onAddAccount
         <div style={{ overflowX: 'auto' }}>
           <div style={{ minWidth: 640 }}>
             {/* Header */}
-            <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 110px 90px 70px 230px', gap: 8, padding: '12px 18px', borderBottom: '1px solid var(--border)', background: 'rgba(16,24,43,0.03)' }}>
+            <div className="sub-table-header" style={{ display: 'grid', gridTemplateColumns: '36px 1fr 110px 90px 70px 230px', gap: 8, padding: '12px 18px', borderBottom: '1px solid var(--border)', background: 'rgba(16,24,43,0.03)' }}>
               <div style={{ display: 'flex', alignItems: 'center' }}>
                 <input type="checkbox" checked={allSelected}
                   onChange={() => allSelected ? setSelected(new Set()) : setSelected(new Set(filtered.map(s => s.id)))}
                   style={{ cursor: 'pointer', accentColor: 'var(--accent)', width: 15, height: 15 }} />
               </div>
-              {['Sender', 'Category', 'Frequency', 'Emails', 'Actions'].map(h => (
-                <div key={h} style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{h}</div>
+              {[
+                { label: 'Sender',    key: 'sender'      },
+                { label: 'Category',  key: 'category'    },
+                { label: 'Frequency', key: 'frequency'   },
+                { label: 'Emails',    key: 'totalEmails' },
+                { label: 'Actions',   key: null          },
+              ].map(({ label, key }) => (
+                <div key={label}
+                  onClick={() => key && handleSort(key)}
+                  style={{ fontSize: 11, fontWeight: 700, color: key && sortKey === key ? 'var(--accent)' : 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', cursor: key ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: 4, userSelect: 'none' }}>
+                  {label}
+                  {key && (
+                    <span style={{ opacity: sortKey === key ? 1 : 0.3, fontSize: 10 }}>
+                      {sortKey === key ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
+                    </span>
+                  )}
+                </div>
               ))}
             </div>
 
