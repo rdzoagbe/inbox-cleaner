@@ -26,14 +26,22 @@ const providerLabel = p => PROVIDER_LABELS[p] || 'Email';
 const saveAccounts  = a => { try { localStorage.setItem('ic_accounts', JSON.stringify(a)); } catch {} };
 const loadAccounts  = ()  => { try { return JSON.parse(localStorage.getItem('ic_accounts') || '[]'); } catch { return []; } };
 
+function ls(key, def) { try { return JSON.parse(localStorage.getItem(key) ?? 'null') ?? def; } catch { return def; } }
+function lsSet(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} }
+
+function applyTheme(theme) {
+  const root = document.documentElement;
+  if (theme === 'light')  { root.setAttribute('data-theme', 'light'); }
+  else if (theme === 'dark') { root.setAttribute('data-theme', 'dark'); }
+  else { root.removeAttribute('data-theme'); }
+}
+
 // ─── Settings Modal ───────────────────────────────────────────────────────────
-function SettingsModal({ accounts, onClose, onRemoveAccount, onAddAccount }) {
-  const [tab, setTab]           = useState('account');
-  const [scanFreq, setScanFreq] = useState('manual');
-  const [theme, setTheme]       = useState('system');
-  const [notifyEmail, setNotifyEmail]   = useState(true);
-  const [notifyBrowser, setNotifyBrowser] = useState(false);
-  const [showDanger, setShowDanger]     = useState(false);
+function SettingsModal({ accounts, onClose, onRemoveAccount, onAddAccount,
+                         theme, onThemeChange, scanFreq, onScanFreqChange,
+                         notifyEmail, onNotifyEmailChange, notifyBrowser, onNotifyBrowserChange }) {
+  const [tab, setTab]         = useState('account');
+  const [showDanger, setShowDanger] = useState(false);
 
   const tabs = [
     { id: 'account',   label: 'Account',    icon: UserCircle },
@@ -145,7 +153,7 @@ function SettingsModal({ accounts, onClose, onRemoveAccount, onAddAccount }) {
                     ['daily', 'Daily', 'Auto-scan every morning'],
                     ['weekly', 'Weekly', 'Auto-scan every Monday']].map(([val, label, desc]) => (
                     <label key={val} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, border: '1px solid', borderColor: scanFreq === val ? 'var(--accent)' : 'var(--border)', background: scanFreq === val ? 'rgba(164,81,43,0.05)' : 'transparent', cursor: 'pointer', marginBottom: 8 }}>
-                      <input type="radio" checked={scanFreq === val} onChange={() => setScanFreq(val)} style={{ accentColor: 'var(--accent)' }} />
+                      <input type="radio" checked={scanFreq === val} onChange={() => onScanFreqChange(val)} style={{ accentColor: 'var(--accent)' }} />
                       <div>
                         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{label}</div>
                         <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{desc}</div>
@@ -171,18 +179,27 @@ function SettingsModal({ accounts, onClose, onRemoveAccount, onAddAccount }) {
               <div>
                 <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 16px' }}>Notification Preferences</h3>
                 {[
-                  [notifyEmail, setNotifyEmail, 'Email digest', 'Weekly summary of blocked senders', Mail],
-                  [notifyBrowser, setNotifyBrowser, 'Browser notifications', 'Alert when a new scan completes', Bell],
-                ].map(([val, setter, label, desc, Icon]) => (
+                  [notifyEmail, onNotifyEmailChange, 'Email digest', 'Weekly summary of blocked senders', Mail, null],
+                  [notifyBrowser, onNotifyBrowserChange, 'Browser notifications', 'Alert when a new scan completes', Bell, 'browser'],
+                ].map(([val, setter, label, desc, Icon, type]) => (
                   <div key={label} className="card" style={{ padding: '12px 14px', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <Icon size={16} color="var(--text-muted)" />
                       <div>
                         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{label}</div>
                         <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{desc}</div>
+                        {type === 'browser' && Notification.permission === 'denied' && (
+                          <div style={{ fontSize: 11, color: 'var(--red)', marginTop: 2 }}>Blocked by browser — allow in site settings</div>
+                        )}
                       </div>
                     </div>
-                    <button onClick={() => setter(v => !v)}
+                    <button onClick={async () => {
+                      if (type === 'browser' && !val) {
+                        const perm = await Notification.requestPermission();
+                        if (perm !== 'granted') return;
+                      }
+                      setter(!val);
+                    }}
                       style={{ width: 40, height: 22, borderRadius: 11, border: 'none', background: val ? 'var(--accent)' : 'var(--border)', cursor: 'pointer', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
                       <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: val ? 21 : 3, transition: 'left 0.2s' }} />
                     </button>
@@ -197,7 +214,7 @@ function SettingsModal({ accounts, onClose, onRemoveAccount, onAddAccount }) {
                 <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 10 }}>Theme</div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
                   {[['light', 'Light', Sun], ['dark', 'Dark', Moon], ['system', 'System', Sliders]].map(([val, label, Icon]) => (
-                    <button key={val} onClick={() => setTheme(val)}
+                    <button key={val} onClick={() => onThemeChange(val)}
                       style={{ padding: '14px 10px', borderRadius: 10, border: '1px solid', borderColor: theme === val ? 'var(--accent)' : 'var(--border)', background: theme === val ? 'rgba(164,81,43,0.07)' : 'transparent', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
                       <Icon size={18} color={theme === val ? 'var(--accent)' : 'var(--text-muted)'} />
                       <span style={{ fontSize: 12, fontWeight: 600, color: theme === val ? 'var(--accent)' : 'var(--text-secondary)' }}>{label}</span>
@@ -683,6 +700,20 @@ export default function InboxCleanerPage() {
   const [userMenuOpen, setUserMenuOpen]   = useState(false);
   const [showSettings, setShowSettings]   = useState(false);
 
+  // Persisted settings
+  const [theme, setThemeState]           = useState(() => ls('ic_theme', 'system'));
+  const [scanFreq, setScanFreqState]     = useState(() => ls('ic_scanfreq', 'manual'));
+  const [notifyEmail, setNotifyEmailState]     = useState(() => ls('ic_notify_email', true));
+  const [notifyBrowser, setNotifyBrowserState] = useState(() => ls('ic_notify_browser', false));
+
+  // Apply theme on mount and on change
+  useEffect(() => { applyTheme(theme); }, [theme]);
+
+  const handleThemeChange = (val) => { setThemeState(val); lsSet('ic_theme', val); applyTheme(val); };
+  const handleScanFreqChange = (val) => { setScanFreqState(val); lsSet('ic_scanfreq', val); };
+  const handleNotifyEmailChange = (val) => { setNotifyEmailState(val); lsSet('ic_notify_email', val); };
+  const handleNotifyBrowserChange = (val) => { setNotifyBrowserState(val); lsSet('ic_notify_browser', val); };
+
   const scanAccount = useCallback(async (grantId) => {
     try {
       const res  = await fetch(`/api/messages?grant_id=${grantId}`);
@@ -714,8 +745,15 @@ export default function InboxCleanerPage() {
     if (!accounts.length || scanning) return;
     setScanning(true);
     const all = await Promise.all(accounts.map(a => scanAccount(a.grant_id)));
-    setSubscriptions(all.flat());
+    const subs = all.flat();
+    setSubscriptions(subs);
     setScanning(false);
+    if (notifyBrowser && Notification.permission === 'granted') {
+      new Notification('InboxCleaner scan complete', {
+        body: `Found ${subs.length} subscription${subs.length !== 1 ? 's' : ''} across ${accounts.length} inbox${accounts.length !== 1 ? 'es' : ''}.`,
+        icon: '/favicon.ico',
+      });
+    }
   };
 
   const handleConnect = async () => {
@@ -781,6 +819,14 @@ export default function InboxCleanerPage() {
           onClose={() => setShowSettings(false)}
           onRemoveAccount={handleRemoveAccount}
           onAddAccount={() => { setShowSettings(false); handleConnect(); }}
+          theme={theme}
+          onThemeChange={handleThemeChange}
+          scanFreq={scanFreq}
+          onScanFreqChange={handleScanFreqChange}
+          notifyEmail={notifyEmail}
+          onNotifyEmailChange={handleNotifyEmailChange}
+          notifyBrowser={notifyBrowser}
+          onNotifyBrowserChange={handleNotifyBrowserChange}
         />
       )}
     </div>
