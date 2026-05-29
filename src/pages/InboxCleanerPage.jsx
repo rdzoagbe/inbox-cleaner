@@ -23,8 +23,10 @@ const CATEGORY_STYLES = {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const providerColor = p => PROVIDER_COLORS[p] || '#6e6b80';
 const providerLabel = p => PROVIDER_LABELS[p] || 'Email';
-const saveAccounts  = a => { try { localStorage.setItem('ic_accounts', JSON.stringify(a)); } catch {} };
-const loadAccounts  = ()  => { try { return JSON.parse(localStorage.getItem('ic_accounts') || '[]'); } catch { return []; } };
+const saveAccounts      = a => { try { localStorage.setItem('ic_accounts', JSON.stringify(a)); } catch {} };
+const loadAccounts      = ()  => { try { return JSON.parse(localStorage.getItem('ic_accounts') || '[]'); } catch { return []; } };
+const saveSubscriptions = s => { try { localStorage.setItem('ic_subs', JSON.stringify(s)); } catch {} };
+const loadSubscriptions = ()  => { try { return JSON.parse(localStorage.getItem('ic_subs') || '[]'); } catch { return []; } };
 
 function ls(key, def) { try { return JSON.parse(localStorage.getItem(key) ?? 'null') ?? def; } catch { return def; } }
 function lsSet(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} }
@@ -693,7 +695,7 @@ function useOAuthCallback(onSuccess) {
 // ─── Root ─────────────────────────────────────────────────────────────────────
 export default function InboxCleanerPage() {
   const [accounts, setAccounts]           = useState(loadAccounts);
-  const [subscriptions, setSubscriptions] = useState([]);
+  const [subscriptions, setSubscriptions] = useState(loadSubscriptions);
   const [scanning, setScanning]           = useState(false);
   const [connecting, setConnecting]       = useState(false);
   const [connectError, setConnectError]   = useState(null);
@@ -735,7 +737,11 @@ export default function InboxCleanerPage() {
     });
     setScanning(true);
     const subs = await scanAccount(grantData.grant_id);
-    setSubscriptions(prev => [...prev, ...subs]);
+    setSubscriptions(prev => {
+      const merged = [...prev.filter(s => s.grant_id !== grantData.grant_id), ...subs];
+      saveSubscriptions(merged);
+      return merged;
+    });
     setScanning(false);
   }, [scanAccount]);
 
@@ -747,6 +753,7 @@ export default function InboxCleanerPage() {
     const all = await Promise.all(accounts.map(a => scanAccount(a.grant_id)));
     const subs = all.flat();
     setSubscriptions(subs);
+    saveSubscriptions(subs);
     setScanning(false);
     if (notifyBrowser && Notification.permission === 'granted') {
       new Notification('InboxCleaner scan complete', {
@@ -768,7 +775,11 @@ export default function InboxCleanerPage() {
 
   const handleRemoveAccount = (grant_id) => {
     setAccounts(prev => { const u = prev.filter(a => a.grant_id !== grant_id); saveAccounts(u); return u; });
-    setSubscriptions(prev => prev.filter(s => s.grant_id !== grant_id));
+    setSubscriptions(prev => {
+      const u = prev.filter(s => s.grant_id !== grant_id);
+      saveSubscriptions(u);
+      return u;
+    });
   };
 
   // Close user menu on outside click
@@ -787,7 +798,7 @@ export default function InboxCleanerPage() {
         accounts={accounts}
         onAddAccount={handleConnect}
         onRemoveAccount={handleRemoveAccount}
-        onLogout={() => { setAccounts([]); setSubscriptions([]); saveAccounts([]); setUserMenuOpen(false); }}
+        onLogout={() => { setAccounts([]); saveAccounts([]); setUserMenuOpen(false); }}
         onScan={handleScan}
         scanning={scanning}
         userMenuOpen={userMenuOpen}
