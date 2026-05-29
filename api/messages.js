@@ -12,9 +12,9 @@ export default async function handler(req, res) {
   const apiUri = process.env.NYLAS_API_URI || 'https://api.us.nylas.com';
 
   try {
-    // Fetch up to 200 messages — only need headers (from, subject, date)
+    // Fetch up to 200 messages — include id so we can fetch List-Unsubscribe on demand
     const response = await fetch(
-      `${apiUri}/v3/grants/${grant_id}/messages?limit=200&fields=from,subject,date,unread`,
+      `${apiUri}/v3/grants/${grant_id}/messages?limit=200&fields=id,from,subject,date,unread`,
       {
         headers: {
           Authorization: `Bearer ${apiKey}`,
@@ -35,16 +35,20 @@ export default async function handler(req, res) {
       const key = from.email.toLowerCase();
       if (!senderMap.has(key)) {
         senderMap.set(key, {
-          email:      from.email,
-          name:       from.name || from.email.split('@')[0],
-          domain:     from.email.split('@')[1] || '',
-          count:      0,
-          latestDate: 0,
+          email:         from.email,
+          name:          from.name || from.email.split('@')[0],
+          domain:        from.email.split('@')[1] || '',
+          count:         0,
+          latestDate:    0,
+          latestMsgId:   null,
         });
       }
       const entry = senderMap.get(key);
       entry.count += 1;
-      if (msg.date > entry.latestDate) entry.latestDate = msg.date;
+      if (msg.date > entry.latestDate) {
+        entry.latestDate  = msg.date;
+        entry.latestMsgId = msg.id;
+      }
     }
 
     // Only surface senders with 2+ emails (likely subscriptions, not one-offs)
@@ -52,15 +56,16 @@ export default async function handler(req, res) {
       .filter(s => s.count >= 2)
       .sort((a, b) => b.count - a.count)
       .map((s, idx) => ({
-        id:          idx + 1,
-        sender:      s.name,
-        email:       s.email,
-        totalEmails: s.count,
-        latestDate:  s.latestDate,
-        category:    inferCategory(s.email, s.name),
-        frequency:   inferFrequency(s.count),
-        logoInitial: s.name.charAt(0).toUpperCase(),
-        logoColor:   logoColor(s.domain),
+        id:            idx + 1,
+        sender:        s.name,
+        email:         s.email,
+        totalEmails:   s.count,
+        latestDate:    s.latestDate,
+        latestMsgId:   s.latestMsgId,
+        category:      inferCategory(s.email, s.name),
+        frequency:     inferFrequency(s.count),
+        logoInitial:   s.name.charAt(0).toUpperCase(),
+        logoColor:     logoColor(s.domain),
       }));
 
     res.status(200).json({ subscriptions });

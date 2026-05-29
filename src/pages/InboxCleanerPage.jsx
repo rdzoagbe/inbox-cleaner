@@ -23,8 +23,21 @@ const CATEGORY_STYLES = {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const providerColor = p => PROVIDER_COLORS[p] || '#6e6b80';
 const providerLabel = p => PROVIDER_LABELS[p] || 'Email';
-const saveAccounts  = a => { try { localStorage.setItem('ic_accounts', JSON.stringify(a)); } catch {} };
-const loadAccounts  = ()  => { try { return JSON.parse(localStorage.getItem('ic_accounts') || '[]'); } catch { return []; } };
+const saveAccounts      = a => { try { localStorage.setItem('ic_accounts', JSON.stringify(a)); } catch {} };
+const loadAccounts      = ()  => { try { return JSON.parse(localStorage.getItem('ic_accounts') || '[]'); } catch { return []; } };
+const saveSubscriptions = s => { try { localStorage.setItem('ic_subscriptions', JSON.stringify({ data: s, ts: Date.now() })); } catch {} };
+const loadSubscriptions = ()  => { try { const r = JSON.parse(localStorage.getItem('ic_subscriptions') || 'null'); return r?.data || []; } catch { return []; } };
+const loadScanTs        = ()  => { try { const r = JSON.parse(localStorage.getItem('ic_subscriptions') || 'null'); return r?.ts || null; } catch { return null; } };
+
+function timeAgo(ts) {
+  if (!ts) return null;
+  const mins = Math.floor((Date.now() - ts) / 60000);
+  if (mins < 1)   return 'just now';
+  if (mins < 60)  return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24)   return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
 
 // ─── Settings Modal ───────────────────────────────────────────────────────────
 function SettingsModal({ accounts, onClose, onRemoveAccount, onAddAccount }) {
@@ -395,14 +408,17 @@ function PaywallModal({ onClose, onUpgrade }) {
   );
 }
 
-function Toast({ sender, action }) {
+function Toast({ sender, action, detail }) {
   const colors = { unsubscribe: '#f87171', keep: '#4ade80', block: '#fb923c' };
   const icons  = { unsubscribe: <Trash2 size={13} />, keep: <Check size={13} />, block: <ShieldBan size={13} /> };
   const labels = { unsubscribe: 'Unsubscribed from', keep: 'Keeping', block: 'Blocked' };
   return (
-    <div style={{ position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)', background: 'var(--text-primary)', color: '#fff', padding: '11px 20px', borderRadius: 10, fontSize: 13, fontWeight: 500, zIndex: 100, whiteSpace: 'nowrap', boxShadow: '0 4px 24px rgba(16,24,43,0.24)', display: 'flex', alignItems: 'center', gap: 8 }}>
-      <span style={{ color: colors[action] }}>{icons[action]}</span>
-      {labels[action]} <strong>{sender}</strong>
+    <div style={{ position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)', background: 'var(--text-primary)', color: '#fff', padding: '11px 20px', borderRadius: 10, fontSize: 13, fontWeight: 500, zIndex: 100, boxShadow: '0 4px 24px rgba(16,24,43,0.24)', display: 'flex', alignItems: 'center', gap: 8, maxWidth: 'calc(100vw - 32px)' }}>
+      <span style={{ color: colors[action], flexShrink: 0 }}>{icons[action]}</span>
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {labels[action]} <strong>{sender}</strong>
+        {detail && <span style={{ color: 'rgba(255,255,255,0.55)', fontWeight: 400, marginLeft: 6 }}>· {detail}</span>}
+      </span>
     </div>
   );
 }
@@ -432,7 +448,7 @@ function BulkActionBar({ count, onBulkUnsubscribe, onBulkBlock, onClear }) {
 }
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
-function Dashboard({ accounts, subscriptions, onAddAccount, onScan, scanning }) {
+function Dashboard({ accounts, subscriptions, scanTs, onAddAccount, onScan, scanning }) {
   const [rows, setRows]               = useState(subscriptions);
   const [selected, setSelected]       = useState(new Set());
   const [actionCount, setActionCount] = useState(0);
@@ -442,10 +458,14 @@ function Dashboard({ accounts, subscriptions, onAddAccount, onScan, scanning }) 
   const [upgraded, setUpgraded]       = useState(false);
   const [hoveredRow, setHoveredRow]   = useState(null);
   const [accountFilter, setAccountFilter] = useState('all');
+  const [pendingRows, setPendingRows] = useState(new Set()); // rows mid-unsubscribe
 
   useEffect(() => setRows(subscriptions), [subscriptions]);
 
-  const showToast = (sender, action) => { setToast({ sender, action }); setTimeout(() => setToast(null), 2600); };
+  const showToast = (sender, action, detail) => {
+    setToast({ sender, action, detail });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const checkLimit = (needed = 1) => {
     if (!upgraded && actionCount + needed > FREE_LIMIT) { setShowPaywall(true); return false; }
@@ -454,17 +474,37 @@ function Dashboard({ accounts, subscriptions, onAddAccount, onScan, scanning }) 
 
   const removeRow = (id) => setRows(p => p.filter(s => s.id !== id));
 
-  const handleUnsubscribe = (id, name) => {
+  // Real unsubscribe — calls the backend which handles List-Unsubscribe
+  const handleUnsubscribe = async (sub) => {
     if (!checkLimit()) return;
-    removeRow(id); setActionCount(c => c + 1);
-    setSelected(p => { const n = new Set(p); n.delete(id); return n; });
-    showToast(name, 'unsubscribe');
+    setPendingRows(p => new Set([...p, sub.id]));
+    try {
+      const res  = await fetch('/api/unsubscribe', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ grant_id: sub.grant_id, message_id: sub.latestMsgId, sender_email: sub.email }),
+      });
+      const data = await res.json();
+      const detail = data.method === 'http'    ? 'via one-click link'
+                   : data.method === 'mailto'  ? `email sent to ${data.to}`
+                   : 'removed from list';
+      showToast(sub.sender, 'unsubscribe', detail);
+    } catch {
+      showToast(sub.sender, 'unsubscribe', 'removed from list');
+    } finally {
+      setPendingRows(p => { const n = new Set(p); n.delete(sub.id); return n; });
+      removeRow(sub.id);
+      setActionCount(c => c + 1);
+      setSelected(p => { const n = new Set(p); n.delete(sub.id); return n; });
+    }
   };
+
   const handleKeep = (id, name) => {
     removeRow(id);
     setSelected(p => { const n = new Set(p); n.delete(id); return n; });
     showToast(name, 'keep');
   };
+
   const handleBlock = (id, name) => {
     if (!checkLimit()) return;
     removeRow(id); setActionCount(c => c + 1);
@@ -472,14 +512,26 @@ function Dashboard({ accounts, subscriptions, onAddAccount, onScan, scanning }) 
     showToast(name, 'block');
   };
 
-  const handleBulkUnsubscribe = () => {
+  const handleBulkUnsubscribe = async () => {
     if (!checkLimit(selected.size)) return;
-    const count = selected.size;
+    const toProcess = rows.filter(s => selected.has(s.id));
+    const count = toProcess.length;
+    setPendingRows(new Set(toProcess.map(s => s.id)));
+    // Fire all unsubscribes concurrently
+    await Promise.allSettled(toProcess.map(sub =>
+      fetch('/api/unsubscribe', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ grant_id: sub.grant_id, message_id: sub.latestMsgId, sender_email: sub.email }),
+      })
+    ));
     setRows(p => p.filter(s => !selected.has(s.id)));
     setActionCount(c => c + count);
     setSelected(new Set());
-    showToast(`${count} senders`, 'unsubscribe');
+    setPendingRows(new Set());
+    showToast(`${count} senders`, 'unsubscribe', 'all processed');
   };
+
   const handleBulkBlock = () => {
     if (!checkLimit(selected.size)) return;
     const count = selected.size;
@@ -574,7 +626,23 @@ function Dashboard({ accounts, subscriptions, onAddAccount, onScan, scanning }) 
             </div>
 
             {filtered.length === 0 ? (
-              <div style={{ padding: '52px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>All clean here!</div>
+              <div style={{ padding: '52px 24px', textAlign: 'center' }}>
+                {rows.length === 0 ? (
+                  <>
+                    <div style={{ fontSize: 32, marginBottom: 12 }}>📭</div>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>No subscriptions found</div>
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>Your inbox looks clean, or the scan hasn't run yet.</div>
+                    <button onClick={onScan} disabled={scanning} style={{ padding: '8px 18px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                      Run a scan now
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontSize: 28, marginBottom: 10 }}>✨</div>
+                    <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>All clean in this category!</div>
+                  </>
+                )}
+              </div>
             ) : filtered.map((sub, idx) => (
               <div key={sub.id}
                 onMouseEnter={() => setHoveredRow(sub.id)}
@@ -595,10 +663,11 @@ function Dashboard({ accounts, subscriptions, onAddAccount, onScan, scanning }) 
                   {sub.totalEmails}<span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 400, marginLeft: 2 }}>total</span>
                 </div>
                 {/* Row actions */}
-                <div style={{ display: 'flex', gap: 4 }}>
-                  <button onClick={() => handleUnsubscribe(sub.id, sub.sender)} title="Unsubscribe"
-                    style={{ padding: '6px 10px', background: hoveredRow === sub.id ? 'rgba(169,71,64,0.12)' : 'rgba(169,71,64,0.07)', color: 'var(--red)', border: '1px solid rgba(169,71,64,0.20)', borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
-                    <Trash2 size={12} /> Unsub
+                <div className="sub-row-actions" style={{ display: 'flex', gap: 4 }}>
+                  <button onClick={() => handleUnsubscribe(sub)} title="Unsubscribe"
+                    disabled={pendingRows.has(sub.id)}
+                    style={{ padding: '6px 10px', background: hoveredRow === sub.id ? 'rgba(169,71,64,0.12)' : 'rgba(169,71,64,0.07)', color: 'var(--red)', border: '1px solid rgba(169,71,64,0.20)', borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: pendingRows.has(sub.id) ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap', opacity: pendingRows.has(sub.id) ? 0.5 : 1 }}>
+                    {pendingRows.has(sub.id) ? <RefreshCw size={11} style={{ animation: 'spin 1s linear infinite' }} /> : <Trash2 size={12} />} Unsub
                   </button>
                   <button onClick={() => handleBlock(sub.id, sub.sender)} title="Block & Report Spam"
                     style={{ padding: '6px 10px', background: hoveredRow === sub.id ? 'rgba(180,83,9,0.12)' : 'rgba(180,83,9,0.07)', color: '#b45309', border: '1px solid rgba(180,83,9,0.20)', borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
@@ -617,6 +686,7 @@ function Dashboard({ accounts, subscriptions, onAddAccount, onScan, scanning }) 
 
       <p style={{ marginTop: 16, fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>
         {rows.length} subscription{rows.length !== 1 ? 's' : ''} across {accounts.length} inbox{accounts.length !== 1 ? 'es' : ''}
+        {scanTs && <> · Last scan: {timeAgo(scanTs)}</>}
         {' · '}
         <button onClick={onScan} disabled={scanning} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 12, cursor: 'pointer', fontWeight: 600, padding: 0 }}>
           {scanning ? 'Scanning…' : 'Refresh scan'}
@@ -660,7 +730,8 @@ function useOAuthCallback(onSuccess) {
 // ─── Root ─────────────────────────────────────────────────────────────────────
 export default function InboxCleanerPage() {
   const [accounts, setAccounts]           = useState(loadAccounts);
-  const [subscriptions, setSubscriptions] = useState([]);
+  const [subscriptions, setSubscriptions] = useState(loadSubscriptions);
+  const [scanTs, setScanTs]               = useState(loadScanTs);
   const [scanning, setScanning]           = useState(false);
   const [connecting, setConnecting]       = useState(false);
   const [connectError, setConnectError]   = useState(null);
@@ -688,7 +759,12 @@ export default function InboxCleanerPage() {
     });
     setScanning(true);
     const subs = await scanAccount(grantData.grant_id);
-    setSubscriptions(prev => [...prev, ...subs]);
+    setSubscriptions(prev => {
+      const merged = [...prev.filter(s => s.grant_id !== grantData.grant_id), ...subs];
+      saveSubscriptions(merged);
+      return merged;
+    });
+    setScanTs(Date.now());
     setScanning(false);
   }, [scanAccount]);
 
@@ -697,8 +773,10 @@ export default function InboxCleanerPage() {
   const handleScan = async () => {
     if (!accounts.length || scanning) return;
     setScanning(true);
-    const all = await Promise.all(accounts.map(a => scanAccount(a.grant_id)));
-    setSubscriptions(all.flat());
+    const all = (await Promise.all(accounts.map(a => scanAccount(a.grant_id)))).flat();
+    setSubscriptions(all);
+    saveSubscriptions(all);
+    setScanTs(Date.now());
     setScanning(false);
   };
 
@@ -733,7 +811,7 @@ export default function InboxCleanerPage() {
         accounts={accounts}
         onAddAccount={handleConnect}
         onRemoveAccount={handleRemoveAccount}
-        onLogout={() => { setAccounts([]); setSubscriptions([]); saveAccounts([]); setUserMenuOpen(false); }}
+        onLogout={() => { setAccounts([]); setSubscriptions([]); saveAccounts([]); saveSubscriptions([]); setScanTs(null); setUserMenuOpen(false); }}
         onScan={handleScan}
         scanning={scanning}
         userMenuOpen={userMenuOpen}
@@ -752,6 +830,7 @@ export default function InboxCleanerPage() {
           <Dashboard
             accounts={accounts}
             subscriptions={subscriptions}
+            scanTs={scanTs}
             onAddAccount={handleConnect}
             onScan={handleScan}
             scanning={scanning}

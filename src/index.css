@@ -124,4 +124,44 @@ input[type="checkbox"] {
   .logo {
     font-size: 19px;
   }
+
+  /* Mobile subscription card layout — replaces the grid table */
+  .sub-table-header { display: none !important; }
+
+  .sub-row {
+    display: flex !important;
+    flex-direction: column !important;
+    grid-template-columns: unset !important;
+    gap: 10px !important;
+    padding: 14px 14px !important;
+  }
+
+  .sub-row-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .sub-row-meta {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .sub-row-actions {
+    display: flex;
+    gap: 6px;
+  }
+
+  .sub-row-actions button {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .sub-checkbox {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+  }
 }
