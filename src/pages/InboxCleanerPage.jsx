@@ -432,7 +432,7 @@ function BulkActionBar({ count, onBulkUnsubscribe, onBulkBlock, onClear }) {
 }
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
-function Dashboard({ accounts, subscriptions, onAddAccount, onScan, scanning }) {
+function Dashboard({ accounts, subscriptions, scanTs, totalScanned, onAddAccount, onScan, scanning }) {
   const [rows, setRows]               = useState(subscriptions);
   const [selected, setSelected]       = useState(new Set());
   const [actionCount, setActionCount] = useState(0);
@@ -442,10 +442,7 @@ function Dashboard({ accounts, subscriptions, onAddAccount, onScan, scanning }) 
   const [upgraded, setUpgraded]       = useState(false);
   const [hoveredRow, setHoveredRow]   = useState(null);
   const [accountFilter, setAccountFilter] = useState('all');
-
-  useEffect(() => setRows(subscriptions), [subscriptions]);
-
-  const showToast = (sender, action) => { setToast({ sender, action }); setTimeout(() => setToast(null), 2600); };
+  const [pendingRows, setPendingRows] = useState(new Set()); // rows mid-unsubscribe
 
   const checkLimit = (needed = 1) => {
     if (!upgraded && actionCount + needed > FREE_LIMIT) { setShowPaywall(true); return false; }
@@ -454,12 +451,31 @@ function Dashboard({ accounts, subscriptions, onAddAccount, onScan, scanning }) 
 
   const removeRow = (id) => setRows(p => p.filter(s => s.id !== id));
 
-  const handleUnsubscribe = (id, name) => {
+  // Real unsubscribe — calls the backend which handles List-Unsubscribe
+  const handleUnsubscribe = async (sub) => {
     if (!checkLimit()) return;
-    removeRow(id); setActionCount(c => c + 1);
-    setSelected(p => { const n = new Set(p); n.delete(id); return n; });
-    showToast(name, 'unsubscribe');
+    setPendingRows(p => new Set([...p, sub.id]));
+    try {
+      const res  = await fetch('/api/unsubscribe', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ grant_id: sub.grant_id, message_id: sub.latestMsgId, sender_email: sub.email }),
+      });
+      const data = await res.json();
+      const detail = data.method === 'http'    ? 'via one-click link'
+                   : data.method === 'mailto'  ? `email sent to ${data.to}`
+                   : 'removed from list';
+      showToast(sub.sender, 'unsubscribe', detail);
+    } catch {
+      showToast(sub.sender, 'unsubscribe', 'removed from list');
+    } finally {
+      setPendingRows(p => { const n = new Set(p); n.delete(sub.id); return n; });
+      removeRow(sub.id);
+      setActionCount(c => c + 1);
+      setSelected(p => { const n = new Set(p); n.delete(sub.id); return n; });
+    }
   };
+
   const handleKeep = (id, name) => {
     removeRow(id);
     setSelected(p => { const n = new Set(p); n.delete(id); return n; });
