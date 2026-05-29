@@ -41,9 +41,16 @@ function applyTheme(theme) {
 // ─── Settings Modal ───────────────────────────────────────────────────────────
 function SettingsModal({ accounts, onClose, onRemoveAccount, onAddAccount,
                          theme, onThemeChange, scanFreq, onScanFreqChange,
-                         notifyEmail, onNotifyEmailChange, notifyBrowser, onNotifyBrowserChange }) {
+                         notifyEmail, onNotifyEmailChange, notifyBrowser, onNotifyBrowserChange,
+                         onClearScanData }) {
   const [tab, setTab]         = useState('account');
   const [showDanger, setShowDanger] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
+
+  // Derive display user from first connected account
+  const primaryAccount = accounts[0];
+  const displayEmail   = primaryAccount?.email || '—';
+  const displayInitial = displayEmail.charAt(0).toUpperCase();
 
   const tabs = [
     { id: 'account',   label: 'Account',    icon: UserCircle },
@@ -89,10 +96,10 @@ function SettingsModal({ accounts, onClose, onRemoveAccount, onAddAccount,
                 <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 16px' }}>Your InboxClean Account</h3>
                 <div className="card" style={{ padding: '14px 16px', marginBottom: 16 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 14, fontWeight: 700 }}>{MOCK_USER.avatar}</div>
+                    <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 14, fontWeight: 700 }}>{displayInitial}</div>
                     <div>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{MOCK_USER.name}</div>
-                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{MOCK_USER.email}</div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{displayEmail}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{accounts.length} inbox{accounts.length !== 1 ? 'es' : ''} connected</div>
                     </div>
                   </div>
                 </div>
@@ -113,8 +120,19 @@ function SettingsModal({ accounts, onClose, onRemoveAccount, onAddAccount,
                   </div>
                   {showDanger && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      <button style={{ padding: '8px 14px', background: 'none', border: '1px solid rgba(169,71,64,0.3)', borderRadius: 8, fontSize: 13, color: 'var(--red)', cursor: 'pointer', textAlign: 'left' }}>Clear all scan data</button>
-                      <button style={{ padding: '8px 14px', background: 'none', border: '1px solid rgba(169,71,64,0.3)', borderRadius: 8, fontSize: 13, color: 'var(--red)', cursor: 'pointer', textAlign: 'left' }}>Delete account</button>
+                      {!confirmClear ? (
+                        <button onClick={() => setConfirmClear(true)} style={{ padding: '8px 14px', background: 'none', border: '1px solid rgba(169,71,64,0.3)', borderRadius: 8, fontSize: 13, color: 'var(--red)', cursor: 'pointer', textAlign: 'left' }}>
+                          Clear all scan data
+                        </button>
+                      ) : (
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                          <span style={{ fontSize: 12, color: 'var(--text-muted)', flex: 1 }}>Are you sure? This removes all scan results.</span>
+                          <button onClick={() => { onClearScanData(); setConfirmClear(false); onClose(); }}
+                            style={{ padding: '7px 12px', background: 'var(--red)', border: 'none', borderRadius: 8, fontSize: 12, color: '#fff', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}>Yes, clear</button>
+                          <button onClick={() => setConfirmClear(false)}
+                            style={{ padding: '7px 12px', background: 'none', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, color: 'var(--text-muted)', cursor: 'pointer' }}>Cancel</button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -271,10 +289,10 @@ function TopNav({ accounts, onAddAccount, onRemoveAccount, onLogout, onScan, sca
         <div style={{ position: 'relative', flexShrink: 0 }}>
           <button onClick={setUserMenuOpen}
             style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 10px 5px 5px', background: userMenuOpen ? 'rgba(16,24,43,0.06)' : 'transparent', border: '1px solid', borderColor: userMenuOpen ? 'var(--border)' : 'transparent', borderRadius: 10, cursor: 'pointer' }}>
-            <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, fontWeight: 700 }}>{MOCK_USER.avatar}</div>
+            <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, fontWeight: 700 }}>{accounts[0]?.email?.charAt(0).toUpperCase() || '?'}</div>
             <div style={{ textAlign: 'left', lineHeight: 1.3 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{MOCK_USER.name.split(' ')[0]}</div>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>App session</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{accounts[0]?.email?.split('@')[0] || 'Account'}</div>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{accounts.length} inbox{accounts.length !== 1 ? 'es' : ''}</div>
             </div>
             <ChevronDown size={12} color="var(--text-muted)" style={{ marginLeft: 2 }} />
           </button>
@@ -282,8 +300,8 @@ function TopNav({ accounts, onAddAccount, onRemoveAccount, onLogout, onScan, sca
           {userMenuOpen && (
             <div style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12, padding: 8, minWidth: 220, boxShadow: '0 8px 32px rgba(16,24,43,0.12)', zIndex: 50 }}>
               <div style={{ padding: '8px 10px 10px', borderBottom: '1px solid var(--border)', marginBottom: 6 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{MOCK_USER.name}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{MOCK_USER.email}</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{accounts[0]?.email || 'No account'}</div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 1 }}>{accounts.length} inbox{accounts.length !== 1 ? 'es' : ''} connected</div>
                 <div style={{ marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(67,85,111,0.08)', color: '#43556F', padding: '2px 8px', borderRadius: 20, fontSize: 10, fontWeight: 600 }}>
                   InboxClean account · Free Plan
                 </div>
@@ -584,12 +602,31 @@ function Dashboard({ accounts, subscriptions, scanTs, totalScanned, onAddAccount
 
       {/* Category filters */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
-        {categories.map(cat => (
-          <button key={cat} onClick={() => setFilter(cat)}
-            style={{ padding: '6px 14px', borderRadius: 20, border: '1px solid', borderColor: filter === cat ? 'var(--accent)' : 'var(--border)', background: filter === cat ? 'var(--accent)' : 'transparent', color: filter === cat ? '#fff' : 'var(--text-secondary)', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>
-            {cat}
-          </button>
-        ))}
+        {categories.map(cat => {
+          const catCount = cat === 'All' ? 0 : rows.filter(s => s.category === cat && (accountFilter === 'all' || s.grant_id === accountFilter)).length;
+          return (
+            <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+              <button onClick={() => setFilter(cat)}
+                style={{ padding: '6px 14px', borderRadius: cat !== 'All' && filter === cat ? '20px 0 0 20px' : 20, border: '1px solid', borderRight: cat !== 'All' && filter === cat ? 'none' : undefined, borderColor: filter === cat ? 'var(--accent)' : 'var(--border)', background: filter === cat ? 'var(--accent)' : 'transparent', color: filter === cat ? '#fff' : 'var(--text-secondary)', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>
+                {cat}{cat !== 'All' && ` · ${catCount}`}
+              </button>
+              {cat !== 'All' && filter === cat && catCount > 0 && (
+                <button onClick={() => {
+                  if (!checkLimit(catCount)) return;
+                  const ids = rows.filter(s => s.category === cat && (accountFilter === 'all' || s.grant_id === accountFilter)).map(s => s.id);
+                  setRows(p => p.filter(s => !ids.includes(s.id)));
+                  setActionCount(c => c + ids.length);
+                  setSelected(new Set());
+                  showToast(`${ids.length} ${cat}`, 'unsubscribe');
+                }}
+                  title={`Unsubscribe all ${cat}`}
+                  style={{ padding: '6px 10px', borderRadius: '0 20px 20px 0', border: '1px solid var(--accent)', borderLeft: 'none', background: 'rgba(164,81,43,0.15)', color: 'var(--accent)', fontSize: 11, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  Unsub all
+                </button>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Table */}
@@ -838,6 +875,7 @@ export default function InboxCleanerPage() {
           onNotifyEmailChange={handleNotifyEmailChange}
           notifyBrowser={notifyBrowser}
           onNotifyBrowserChange={handleNotifyBrowserChange}
+          onClearScanData={() => { setSubscriptions([]); saveSubscriptions([]); }}
         />
       )}
     </div>
