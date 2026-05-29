@@ -448,7 +448,7 @@ function BulkActionBar({ count, onBulkUnsubscribe, onBulkBlock, onClear }) {
 }
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
-function Dashboard({ accounts, subscriptions, scanTs, onAddAccount, onScan, scanning }) {
+function Dashboard({ accounts, subscriptions, scanTs, totalScanned, onAddAccount, onScan, scanning }) {
   const [rows, setRows]               = useState(subscriptions);
   const [selected, setSelected]       = useState(new Set());
   const [actionCount, setActionCount] = useState(0);
@@ -686,6 +686,7 @@ function Dashboard({ accounts, subscriptions, scanTs, onAddAccount, onScan, scan
 
       <p style={{ marginTop: 16, fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>
         {rows.length} subscription{rows.length !== 1 ? 's' : ''} across {accounts.length} inbox{accounts.length !== 1 ? 'es' : ''}
+        {totalScanned > 0 && <> · {totalScanned.toLocaleString()} emails scanned</>}
         {scanTs && <> · Last scan: {timeAgo(scanTs)}</>}
         {' · '}
         <button onClick={onScan} disabled={scanning} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 12, cursor: 'pointer', fontWeight: 600, padding: 0 }}>
@@ -732,6 +733,7 @@ export default function InboxCleanerPage() {
   const [accounts, setAccounts]           = useState(loadAccounts);
   const [subscriptions, setSubscriptions] = useState(loadSubscriptions);
   const [scanTs, setScanTs]               = useState(loadScanTs);
+  const [totalScanned, setTotalScanned]   = useState(0);
   const [scanning, setScanning]           = useState(false);
   const [connecting, setConnecting]       = useState(false);
   const [connectError, setConnectError]   = useState(null);
@@ -743,10 +745,13 @@ export default function InboxCleanerPage() {
       const res  = await fetch(`/api/messages?grant_id=${grantId}`);
       const data = await res.json();
       if (data.subscriptions) {
-        return data.subscriptions.map((s, i) => ({ ...s, id: `${grantId}-${i}`, grant_id: grantId }));
+        return {
+          subs:         data.subscriptions.map((s, i) => ({ ...s, id: `${grantId}-${i}`, grant_id: grantId })),
+          totalScanned: data.totalScanned || 0,
+        };
       }
     } catch (err) { console.error(err); }
-    return [];
+    return { subs: [], totalScanned: 0 };
   }, []);
 
   const handleNewGrant = useCallback(async (grantData) => {
@@ -758,12 +763,13 @@ export default function InboxCleanerPage() {
       return updated;
     });
     setScanning(true);
-    const subs = await scanAccount(grantData.grant_id);
+    const { subs, totalScanned: ts } = await scanAccount(grantData.grant_id);
     setSubscriptions(prev => {
       const merged = [...prev.filter(s => s.grant_id !== grantData.grant_id), ...subs];
       saveSubscriptions(merged);
       return merged;
     });
+    setTotalScanned(ts);
     setScanTs(Date.now());
     setScanning(false);
   }, [scanAccount]);
@@ -773,9 +779,12 @@ export default function InboxCleanerPage() {
   const handleScan = async () => {
     if (!accounts.length || scanning) return;
     setScanning(true);
-    const all = (await Promise.all(accounts.map(a => scanAccount(a.grant_id)))).flat();
+    const results = await Promise.all(accounts.map(a => scanAccount(a.grant_id)));
+    const all     = results.flatMap(r => r.subs);
+    const scanned = results.reduce((n, r) => n + r.totalScanned, 0);
     setSubscriptions(all);
     saveSubscriptions(all);
+    setTotalScanned(scanned);
     setScanTs(Date.now());
     setScanning(false);
   };
@@ -831,6 +840,7 @@ export default function InboxCleanerPage() {
             accounts={accounts}
             subscriptions={subscriptions}
             scanTs={scanTs}
+            totalScanned={totalScanned}
             onAddAccount={handleConnect}
             onScan={handleScan}
             scanning={scanning}
