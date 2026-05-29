@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/inbox-cleaner/sw.js', { scope: '/inbox-cleaner/' })})}
