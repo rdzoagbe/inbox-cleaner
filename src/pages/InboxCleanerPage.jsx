@@ -23,21 +23,8 @@ const CATEGORY_STYLES = {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const providerColor = p => PROVIDER_COLORS[p] || '#6e6b80';
 const providerLabel = p => PROVIDER_LABELS[p] || 'Email';
-const saveAccounts      = a => { try { localStorage.setItem('ic_accounts', JSON.stringify(a)); } catch {} };
-const loadAccounts      = ()  => { try { return JSON.parse(localStorage.getItem('ic_accounts') || '[]'); } catch { return []; } };
-const saveSubscriptions = s => { try { localStorage.setItem('ic_subscriptions', JSON.stringify({ data: s, ts: Date.now() })); } catch {} };
-const loadSubscriptions = ()  => { try { const r = JSON.parse(localStorage.getItem('ic_subscriptions') || 'null'); return r?.data || []; } catch { return []; } };
-const loadScanTs        = ()  => { try { const r = JSON.parse(localStorage.getItem('ic_subscriptions') || 'null'); return r?.ts || null; } catch { return null; } };
-
-function timeAgo(ts) {
-  if (!ts) return null;
-  const mins = Math.floor((Date.now() - ts) / 60000);
-  if (mins < 1)   return 'just now';
-  if (mins < 60)  return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24)   return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
-}
+const saveAccounts  = a => { try { localStorage.setItem('ic_accounts', JSON.stringify(a)); } catch {} };
+const loadAccounts  = ()  => { try { return JSON.parse(localStorage.getItem('ic_accounts') || '[]'); } catch { return []; } };
 
 // ─── Settings Modal ───────────────────────────────────────────────────────────
 function SettingsModal({ accounts, onClose, onRemoveAccount, onAddAccount }) {
@@ -56,6 +43,188 @@ function SettingsModal({ accounts, onClose, onRemoveAccount, onAddAccount }) {
     { id: 'appearance', label: 'Appearance', icon: Sun },
   ];
 
+  const tabs = [
+    { id: 'account',   label: 'Account',    icon: UserCircle },
+    { id: 'inboxes',   label: 'Inboxes',    icon: Inbox },
+    { id: 'scanning',  label: 'Scanning',   icon: ScanLine },
+    { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'appearance', label: 'Appearance', icon: Sun },
+  ];
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(16,24,43,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, backdropFilter: 'blur(4px)' }}
+      onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 20, width: '100%', maxWidth: 640, maxHeight: '85vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 64px rgba(16,24,43,0.2)', overflow: 'hidden' }}>
+
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 22px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Settings size={18} color="var(--accent)" />
+            <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)' }}>Settings</span>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 4 }}><X size={18} /></button>
+        </div>
+
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+          {/* Sidebar */}
+          <div style={{ width: 160, borderRight: '1px solid var(--border)', padding: '12px 8px', flexShrink: 0, overflowY: 'auto' }}>
+            {tabs.map(t => {
+              const Icon = t.icon;
+              return (
+                <button key={t.id} onClick={() => setTab(t.id)}
+                  style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', borderRadius: 8, border: 'none', background: tab === t.id ? 'rgba(164,81,43,0.10)' : 'none', color: tab === t.id ? 'var(--accent)' : 'var(--text-secondary)', fontSize: 13, fontWeight: tab === t.id ? 600 : 400, cursor: 'pointer', textAlign: 'left', marginBottom: 2 }}>
+                  <Icon size={14} /> {t.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Content */}
+          <div style={{ flex: 1, padding: '20px 22px', overflowY: 'auto' }}>
+
+            {tab === 'account' && (
+              <div>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 16px' }}>Your InboxClean Account</h3>
+                <div className="card" style={{ padding: '14px 16px', marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 14, fontWeight: 700 }}>{MOCK_USER.avatar}</div>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>{MOCK_USER.name}</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{MOCK_USER.email}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="card" style={{ padding: '14px 16px', marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>Free Plan</div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>5 free unsubscribes per scan</div>
+                    </div>
+                    <button style={{ padding: '7px 14px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Upgrade · $10</button>
+                  </div>
+                </div>
+
+                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginTop: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--red)', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }} onClick={() => setShowDanger(v => !v)}>
+                    <AlertTriangle size={12} /> Danger Zone <ChevronRight size={12} style={{ transform: showDanger ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }} />
+                  </div>
+                  {showDanger && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <button style={{ padding: '8px 14px', background: 'none', border: '1px solid rgba(169,71,64,0.3)', borderRadius: 8, fontSize: 13, color: 'var(--red)', cursor: 'pointer', textAlign: 'left' }}>Clear all scan data</button>
+                      <button style={{ padding: '8px 14px', background: 'none', border: '1px solid rgba(169,71,64,0.3)', borderRadius: 8, fontSize: 13, color: 'var(--red)', cursor: 'pointer', textAlign: 'left' }}>Delete account</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {tab === 'inboxes' && (
+              <div>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 16px' }}>Connected Inboxes</h3>
+                {accounts.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-muted)', fontSize: 13 }}>No inboxes connected yet.</div>
+                ) : accounts.map(acc => (
+                  <div key={acc.grant_id} className="card" style={{ padding: '12px 14px', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: 8, background: providerColor(acc.provider), display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, fontWeight: 800 }}>
+                        {providerLabel(acc.provider).charAt(0)}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{acc.email}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{providerLabel(acc.provider)}</div>
+                      </div>
+                    </div>
+                    <button onClick={() => onRemoveAccount(acc.grant_id)} style={{ background: 'none', border: '1px solid rgba(169,71,64,0.25)', borderRadius: 7, padding: '5px 10px', fontSize: 12, color: 'var(--red)', cursor: 'pointer' }}>Disconnect</button>
+                  </div>
+                ))}
+                <button onClick={onAddAccount} style={{ width: '100%', padding: '10px', background: 'none', border: '1px dashed var(--border)', borderRadius: 10, fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 4 }}>
+                  <Plus size={13} /> Connect another inbox
+                </button>
+              </div>
+            )}
+
+            {tab === 'scanning' && (
+              <div>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 16px' }}>Scan Preferences</h3>
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 10 }}>Scan Frequency</div>
+                  {[['manual', 'Manual only', 'Scan when you click the button'],
+                    ['daily', 'Daily', 'Auto-scan every morning'],
+                    ['weekly', 'Weekly', 'Auto-scan every Monday']].map(([val, label, desc]) => (
+                    <label key={val} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, border: '1px solid', borderColor: scanFreq === val ? 'var(--accent)' : 'var(--border)', background: scanFreq === val ? 'rgba(164,81,43,0.05)' : 'transparent', cursor: 'pointer', marginBottom: 8 }}>
+                      <input type="radio" checked={scanFreq === val} onChange={() => setScanFreq(val)} style={{ accentColor: 'var(--accent)' }} />
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{label}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{desc}</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+                <div className="card" style={{ padding: '12px 14px' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>Email lookback window</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>How far back to scan for subscriptions</div>
+                  <select style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-primary)', fontSize: 13 }}>
+                    <option>Last 200 emails</option>
+                    <option>Last 500 emails</option>
+                    <option>Last 1,000 emails</option>
+                    <option>Last 3 months</option>
+                    <option>Last 6 months</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {tab === 'notifications' && (
+              <div>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 16px' }}>Notification Preferences</h3>
+                {[
+                  [notifyEmail, setNotifyEmail, 'Email digest', 'Weekly summary of blocked senders', Mail],
+                  [notifyBrowser, setNotifyBrowser, 'Browser notifications', 'Alert when a new scan completes', Bell],
+                ].map(([val, setter, label, desc, Icon]) => (
+                  <div key={label} className="card" style={{ padding: '12px 14px', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <Icon size={16} color="var(--text-muted)" />
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{label}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{desc}</div>
+                      </div>
+                    </div>
+                    <button onClick={() => setter(v => !v)}
+                      style={{ width: 40, height: 22, borderRadius: 11, border: 'none', background: val ? 'var(--accent)' : 'var(--border)', cursor: 'pointer', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
+                      <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: val ? 21 : 3, transition: 'left 0.2s' }} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {tab === 'appearance' && (
+              <div>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 16px' }}>Appearance</h3>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 10 }}>Theme</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+                  {[['light', 'Light', Sun], ['dark', 'Dark', Moon], ['system', 'System', Sliders]].map(([val, label, Icon]) => (
+                    <button key={val} onClick={() => setTheme(val)}
+                      style={{ padding: '14px 10px', borderRadius: 10, border: '1px solid', borderColor: theme === val ? 'var(--accent)' : 'var(--border)', background: theme === val ? 'rgba(164,81,43,0.07)' : 'transparent', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                      <Icon size={18} color={theme === val ? 'var(--accent)' : 'var(--text-muted)'} />
+                      <span style={{ fontSize: 12, fontWeight: 600, color: theme === val ? 'var(--accent)' : 'var(--text-secondary)' }}>{label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Top Nav ──────────────────────────────────────────────────────────────────
+function TopNav({ accounts, onAddAccount, onRemoveAccount, onLogout, onScan, scanning,
+                  userMenuOpen, setUserMenuOpen, onOpenSettings }) {
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(16,24,43,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, backdropFilter: 'blur(4px)' }}
       onClick={e => e.target === e.currentTarget && onClose()}>
@@ -408,17 +577,14 @@ function PaywallModal({ onClose, onUpgrade }) {
   );
 }
 
-function Toast({ sender, action, detail }) {
+function Toast({ sender, action }) {
   const colors = { unsubscribe: '#f87171', keep: '#4ade80', block: '#fb923c' };
   const icons  = { unsubscribe: <Trash2 size={13} />, keep: <Check size={13} />, block: <ShieldBan size={13} /> };
   const labels = { unsubscribe: 'Unsubscribed from', keep: 'Keeping', block: 'Blocked' };
   return (
-    <div style={{ position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)', background: 'var(--text-primary)', color: '#fff', padding: '11px 20px', borderRadius: 10, fontSize: 13, fontWeight: 500, zIndex: 100, boxShadow: '0 4px 24px rgba(16,24,43,0.24)', display: 'flex', alignItems: 'center', gap: 8, maxWidth: 'calc(100vw - 32px)' }}>
-      <span style={{ color: colors[action], flexShrink: 0 }}>{icons[action]}</span>
-      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {labels[action]} <strong>{sender}</strong>
-        {detail && <span style={{ color: 'rgba(255,255,255,0.55)', fontWeight: 400, marginLeft: 6 }}>· {detail}</span>}
-      </span>
+    <div style={{ position: 'fixed', bottom: 28, left: '50%', transform: 'translateX(-50%)', background: 'var(--text-primary)', color: '#fff', padding: '11px 20px', borderRadius: 10, fontSize: 13, fontWeight: 500, zIndex: 100, whiteSpace: 'nowrap', boxShadow: '0 4px 24px rgba(16,24,43,0.24)', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <span style={{ color: colors[action] }}>{icons[action]}</span>
+      {labels[action]} <strong>{sender}</strong>
     </div>
   );
 }
@@ -448,6 +614,20 @@ function BulkActionBar({ count, onBulkUnsubscribe, onBulkBlock, onClear }) {
 }
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
+function Dashboard({ accounts, subscriptions, onAddAccount, onScan, scanning }) {
+  const [rows, setRows]               = useState(subscriptions);
+  const [selected, setSelected]       = useState(new Set());
+  const [actionCount, setActionCount] = useState(0);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [toast, setToast]             = useState(null);
+  const [filter, setFilter]           = useState('All');
+  const [upgraded, setUpgraded]       = useState(false);
+  const [hoveredRow, setHoveredRow]   = useState(null);
+  const [accountFilter, setAccountFilter] = useState('all');
+
+  useEffect(() => setRows(subscriptions), [subscriptions]);
+
+// ─── Main Dashboard ───────────────────────────────────────────────────────────
 function Dashboard({ accounts, subscriptions, scanTs, totalScanned, onAddAccount, onScan, scanning }) {
   const [rows, setRows]               = useState(subscriptions);
   const [selected, setSelected]       = useState(new Set());
@@ -460,11 +640,18 @@ function Dashboard({ accounts, subscriptions, scanTs, totalScanned, onAddAccount
   const [accountFilter, setAccountFilter] = useState('all');
   const [pendingRows, setPendingRows] = useState(new Set()); // rows mid-unsubscribe
 
-  useEffect(() => setRows(subscriptions), [subscriptions]);
+  const checkLimit = (needed = 1) => {
+    if (!upgraded && actionCount + needed > FREE_LIMIT) { setShowPaywall(true); return false; }
+    return true;
+  };
 
-  const showToast = (sender, action, detail) => {
-    setToast({ sender, action, detail });
-    setTimeout(() => setToast(null), 3000);
+  const removeRow = (id) => setRows(p => p.filter(s => s.id !== id));
+
+  const handleUnsubscribe = (id, name) => {
+    if (!checkLimit()) return;
+    removeRow(id); setActionCount(c => c + 1);
+    setSelected(p => { const n = new Set(p); n.delete(id); return n; });
+    showToast(name, 'unsubscribe');
   };
 
   const checkLimit = (needed = 1) => {
@@ -504,7 +691,6 @@ function Dashboard({ accounts, subscriptions, scanTs, totalScanned, onAddAccount
     setSelected(p => { const n = new Set(p); n.delete(id); return n; });
     showToast(name, 'keep');
   };
-
   const handleBlock = (id, name) => {
     if (!checkLimit()) return;
     removeRow(id); setActionCount(c => c + 1);
@@ -512,26 +698,14 @@ function Dashboard({ accounts, subscriptions, scanTs, totalScanned, onAddAccount
     showToast(name, 'block');
   };
 
-  const handleBulkUnsubscribe = async () => {
+  const handleBulkUnsubscribe = () => {
     if (!checkLimit(selected.size)) return;
-    const toProcess = rows.filter(s => selected.has(s.id));
-    const count = toProcess.length;
-    setPendingRows(new Set(toProcess.map(s => s.id)));
-    // Fire all unsubscribes concurrently
-    await Promise.allSettled(toProcess.map(sub =>
-      fetch('/api/unsubscribe', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ grant_id: sub.grant_id, message_id: sub.latestMsgId, sender_email: sub.email }),
-      })
-    ));
+    const count = selected.size;
     setRows(p => p.filter(s => !selected.has(s.id)));
     setActionCount(c => c + count);
     setSelected(new Set());
-    setPendingRows(new Set());
-    showToast(`${count} senders`, 'unsubscribe', 'all processed');
+    showToast(`${count} senders`, 'unsubscribe');
   };
-
   const handleBulkBlock = () => {
     if (!checkLimit(selected.size)) return;
     const count = selected.size;
@@ -543,32 +717,10 @@ function Dashboard({ accounts, subscriptions, scanTs, totalScanned, onAddAccount
 
   const toggleSelect = id => setSelected(p => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
-  // ── Sorting ──
-  const [sortKey, setSortKey]   = useState('totalEmails'); // default: most emails first
-  const [sortDir, setSortDir]   = useState('desc');
-
-  const FREQ_ORDER = { 'Daily': 5, '2x / week': 4, 'Weekly': 3, 'Monthly': 2, 'Occasional': 1 };
-
-  const handleSort = (key) => {
-    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    else { setSortKey(key); setSortDir('asc'); }
-  };
-
   const categories = ['All', ...Array.from(new Set(rows.map(s => s.category)))];
   const filtered = rows
     .filter(s => filter === 'All' || s.category === filter)
-    .filter(s => accountFilter === 'all' || s.grant_id === accountFilter)
-    .slice()
-    .sort((a, b) => {
-      let av, bv;
-      if (sortKey === 'sender')      { av = a.sender.toLowerCase();        bv = b.sender.toLowerCase(); }
-      else if (sortKey === 'category')  { av = a.category;                    bv = b.category; }
-      else if (sortKey === 'frequency') { av = FREQ_ORDER[a.frequency] || 0;  bv = FREQ_ORDER[b.frequency] || 0; }
-      else                              { av = a.totalEmails;                  bv = b.totalEmails; }
-      if (av < bv) return sortDir === 'asc' ? -1 : 1;
-      if (av > bv) return sortDir === 'asc' ?  1 : -1;
-      return 0;
-    });
+    .filter(s => accountFilter === 'all' || s.grant_id === accountFilter);
   const allSelected   = filtered.length > 0 && filtered.every(s => selected.has(s.id));
   const freeRemaining = Math.max(0, FREE_LIMIT - actionCount);
 
@@ -636,50 +788,19 @@ function Dashboard({ accounts, subscriptions, scanTs, totalScanned, onAddAccount
         <div style={{ overflowX: 'auto' }}>
           <div style={{ minWidth: 640 }}>
             {/* Header */}
-            <div className="sub-table-header" style={{ display: 'grid', gridTemplateColumns: '36px 1fr 110px 90px 70px 230px', gap: 8, padding: '12px 18px', borderBottom: '1px solid var(--border)', background: 'rgba(16,24,43,0.03)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 110px 90px 70px 230px', gap: 8, padding: '12px 18px', borderBottom: '1px solid var(--border)', background: 'rgba(16,24,43,0.03)' }}>
               <div style={{ display: 'flex', alignItems: 'center' }}>
                 <input type="checkbox" checked={allSelected}
                   onChange={() => allSelected ? setSelected(new Set()) : setSelected(new Set(filtered.map(s => s.id)))}
                   style={{ cursor: 'pointer', accentColor: 'var(--accent)', width: 15, height: 15 }} />
               </div>
-              {[
-                { label: 'Sender',    key: 'sender'      },
-                { label: 'Category',  key: 'category'    },
-                { label: 'Frequency', key: 'frequency'   },
-                { label: 'Emails',    key: 'totalEmails' },
-                { label: 'Actions',   key: null          },
-              ].map(({ label, key }) => (
-                <div key={label}
-                  onClick={() => key && handleSort(key)}
-                  style={{ fontSize: 11, fontWeight: 700, color: key && sortKey === key ? 'var(--accent)' : 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase', cursor: key ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: 4, userSelect: 'none' }}>
-                  {label}
-                  {key && (
-                    <span style={{ opacity: sortKey === key ? 1 : 0.3, fontSize: 10 }}>
-                      {sortKey === key ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
-                    </span>
-                  )}
-                </div>
+              {['Sender', 'Category', 'Frequency', 'Emails', 'Actions'].map(h => (
+                <div key={h} style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{h}</div>
               ))}
             </div>
 
             {filtered.length === 0 ? (
-              <div style={{ padding: '52px 24px', textAlign: 'center' }}>
-                {rows.length === 0 ? (
-                  <>
-                    <div style={{ fontSize: 32, marginBottom: 12 }}>📭</div>
-                    <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>No subscriptions found</div>
-                    <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>Your inbox looks clean, or the scan hasn't run yet.</div>
-                    <button onClick={onScan} disabled={scanning} style={{ padding: '8px 18px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                      Run a scan now
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <div style={{ fontSize: 28, marginBottom: 10 }}>✨</div>
-                    <div style={{ fontSize: 14, color: 'var(--text-muted)' }}>All clean in this category!</div>
-                  </>
-                )}
-              </div>
+              <div style={{ padding: '52px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>All clean here!</div>
             ) : filtered.map((sub, idx) => (
               <div key={sub.id}
                 onMouseEnter={() => setHoveredRow(sub.id)}
@@ -700,11 +821,10 @@ function Dashboard({ accounts, subscriptions, scanTs, totalScanned, onAddAccount
                   {sub.totalEmails}<span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 400, marginLeft: 2 }}>total</span>
                 </div>
                 {/* Row actions */}
-                <div className="sub-row-actions" style={{ display: 'flex', gap: 4 }}>
-                  <button onClick={() => handleUnsubscribe(sub)} title="Unsubscribe"
-                    disabled={pendingRows.has(sub.id)}
-                    style={{ padding: '6px 10px', background: hoveredRow === sub.id ? 'rgba(169,71,64,0.12)' : 'rgba(169,71,64,0.07)', color: 'var(--red)', border: '1px solid rgba(169,71,64,0.20)', borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: pendingRows.has(sub.id) ? 'wait' : 'pointer', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap', opacity: pendingRows.has(sub.id) ? 0.5 : 1 }}>
-                    {pendingRows.has(sub.id) ? <RefreshCw size={11} style={{ animation: 'spin 1s linear infinite' }} /> : <Trash2 size={12} />} Unsub
+                <div style={{ display: 'flex', gap: 4 }}>
+                  <button onClick={() => handleUnsubscribe(sub.id, sub.sender)} title="Unsubscribe"
+                    style={{ padding: '6px 10px', background: hoveredRow === sub.id ? 'rgba(169,71,64,0.12)' : 'rgba(169,71,64,0.07)', color: 'var(--red)', border: '1px solid rgba(169,71,64,0.20)', borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
+                    <Trash2 size={12} /> Unsub
                   </button>
                   <button onClick={() => handleBlock(sub.id, sub.sender)} title="Block & Report Spam"
                     style={{ padding: '6px 10px', background: hoveredRow === sub.id ? 'rgba(180,83,9,0.12)' : 'rgba(180,83,9,0.07)', color: '#b45309', border: '1px solid rgba(180,83,9,0.20)', borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
@@ -723,8 +843,6 @@ function Dashboard({ accounts, subscriptions, scanTs, totalScanned, onAddAccount
 
       <p style={{ marginTop: 16, fontSize: 12, color: 'var(--text-muted)', textAlign: 'center' }}>
         {rows.length} subscription{rows.length !== 1 ? 's' : ''} across {accounts.length} inbox{accounts.length !== 1 ? 'es' : ''}
-        {totalScanned > 0 && <> · {totalScanned.toLocaleString()} emails scanned</>}
-        {scanTs && <> · Last scan: {timeAgo(scanTs)}</>}
         {' · '}
         <button onClick={onScan} disabled={scanning} style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 12, cursor: 'pointer', fontWeight: 600, padding: 0 }}>
           {scanning ? 'Scanning…' : 'Refresh scan'}
@@ -768,9 +886,7 @@ function useOAuthCallback(onSuccess) {
 // ─── Root ─────────────────────────────────────────────────────────────────────
 export default function InboxCleanerPage() {
   const [accounts, setAccounts]           = useState(loadAccounts);
-  const [subscriptions, setSubscriptions] = useState(loadSubscriptions);
-  const [scanTs, setScanTs]               = useState(loadScanTs);
-  const [totalScanned, setTotalScanned]   = useState(0);
+  const [subscriptions, setSubscriptions] = useState([]);
   const [scanning, setScanning]           = useState(false);
   const [connecting, setConnecting]       = useState(false);
   const [connectError, setConnectError]   = useState(null);
@@ -782,13 +898,10 @@ export default function InboxCleanerPage() {
       const res  = await fetch(`/api/messages?grant_id=${grantId}`);
       const data = await res.json();
       if (data.subscriptions) {
-        return {
-          subs:         data.subscriptions.map((s, i) => ({ ...s, id: `${grantId}-${i}`, grant_id: grantId })),
-          totalScanned: data.totalScanned || 0,
-        };
+        return data.subscriptions.map((s, i) => ({ ...s, id: `${grantId}-${i}`, grant_id: grantId }));
       }
     } catch (err) { console.error(err); }
-    return { subs: [], totalScanned: 0 };
+    return [];
   }, []);
 
   const handleNewGrant = useCallback(async (grantData) => {
@@ -800,14 +913,8 @@ export default function InboxCleanerPage() {
       return updated;
     });
     setScanning(true);
-    const { subs, totalScanned: ts } = await scanAccount(grantData.grant_id);
-    setSubscriptions(prev => {
-      const merged = [...prev.filter(s => s.grant_id !== grantData.grant_id), ...subs];
-      saveSubscriptions(merged);
-      return merged;
-    });
-    setTotalScanned(ts);
-    setScanTs(Date.now());
+    const subs = await scanAccount(grantData.grant_id);
+    setSubscriptions(prev => [...prev, ...subs]);
     setScanning(false);
   }, [scanAccount]);
 
@@ -816,13 +923,8 @@ export default function InboxCleanerPage() {
   const handleScan = async () => {
     if (!accounts.length || scanning) return;
     setScanning(true);
-    const results = await Promise.all(accounts.map(a => scanAccount(a.grant_id)));
-    const all     = results.flatMap(r => r.subs);
-    const scanned = results.reduce((n, r) => n + r.totalScanned, 0);
-    setSubscriptions(all);
-    saveSubscriptions(all);
-    setTotalScanned(scanned);
-    setScanTs(Date.now());
+    const all = await Promise.all(accounts.map(a => scanAccount(a.grant_id)));
+    setSubscriptions(all.flat());
     setScanning(false);
   };
 
@@ -857,7 +959,7 @@ export default function InboxCleanerPage() {
         accounts={accounts}
         onAddAccount={handleConnect}
         onRemoveAccount={handleRemoveAccount}
-        onLogout={() => { setAccounts([]); setSubscriptions([]); saveAccounts([]); saveSubscriptions([]); setScanTs(null); setUserMenuOpen(false); }}
+        onLogout={() => { setAccounts([]); setSubscriptions([]); saveAccounts([]); setUserMenuOpen(false); }}
         onScan={handleScan}
         scanning={scanning}
         userMenuOpen={userMenuOpen}
@@ -876,8 +978,6 @@ export default function InboxCleanerPage() {
           <Dashboard
             accounts={accounts}
             subscriptions={subscriptions}
-            scanTs={scanTs}
-            totalScanned={totalScanned}
             onAddAccount={handleConnect}
             onScan={handleScan}
             scanning={scanning}
