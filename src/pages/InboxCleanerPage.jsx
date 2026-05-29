@@ -38,6 +38,16 @@ function applyTheme(theme) {
   else { root.removeAttribute('data-theme'); }
 }
 
+function ls(key, def) { try { return JSON.parse(localStorage.getItem(key) ?? 'null') ?? def; } catch { return def; } }
+function lsSet(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} }
+
+function applyTheme(theme) {
+  const root = document.documentElement;
+  if (theme === 'light')  { root.setAttribute('data-theme', 'light'); }
+  else if (theme === 'dark') { root.setAttribute('data-theme', 'dark'); }
+  else { root.removeAttribute('data-theme'); }
+}
+
 // ─── Settings Modal ───────────────────────────────────────────────────────────
 function SettingsModal({ accounts, onClose, onRemoveAccount, onAddAccount,
                          theme, onThemeChange, scanFreq, onScanFreqChange,
