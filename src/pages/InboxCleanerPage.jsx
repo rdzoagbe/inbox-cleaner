@@ -147,7 +147,7 @@ function SettingsModal({ accounts, onClose, onRemoveAccount, onAddAccount,
                 {accounts.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text-muted)', fontSize: 13 }}>No inboxes connected yet.</div>
                 ) : accounts.map(acc => (
-                  <div key={acc.grant_id} className="card" style={{ padding: '12px 14px', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div key={acc.email} className="card" style={{ padding: '12px 14px', marginBottom: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{ width: 32, height: 32, borderRadius: 8, background: providerColor(acc.provider), display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, fontWeight: 800 }}>
                         {providerLabel(acc.provider).charAt(0)}
@@ -157,7 +157,7 @@ function SettingsModal({ accounts, onClose, onRemoveAccount, onAddAccount,
                         <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{providerLabel(acc.provider)}</div>
                       </div>
                     </div>
-                    <button onClick={() => onRemoveAccount(acc.grant_id)} style={{ background: 'none', border: '1px solid rgba(169,71,64,0.25)', borderRadius: 7, padding: '5px 10px', fontSize: 12, color: 'var(--red)', cursor: 'pointer' }}>Disconnect</button>
+                    <button onClick={() => onRemoveAccount(acc.email)} style={{ background: 'none', border: '1px solid rgba(169,71,64,0.25)', borderRadius: 7, padding: '5px 10px', fontSize: 12, color: 'var(--red)', cursor: 'pointer' }}>Disconnect</button>
                   </div>
                 ))}
                 <button onClick={onAddAccount} style={{ width: '100%', padding: '10px', background: 'none', border: '1px dashed var(--border)', borderRadius: 10, fontSize: 13, color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 4 }}>
@@ -265,12 +265,12 @@ function TopNav({ accounts, onAddAccount, onRemoveAccount, onLogout, onScan, sca
         {/* Connected inboxes + scan button */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'center', flexWrap: 'wrap' }}>
           {accounts.map(acc => (
-            <div key={acc.grant_id} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 20, padding: '4px 10px 4px 6px', fontSize: 12 }}>
+            <div key={acc.email} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 20, padding: '4px 10px 4px 6px', fontSize: 12 }}>
               <div style={{ width: 18, height: 18, borderRadius: 5, background: providerColor(acc.provider), display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 9, fontWeight: 800, flexShrink: 0 }}>
                 {providerLabel(acc.provider).charAt(0)}
               </div>
               <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{acc.email}</span>
-              <button onClick={() => onRemoveAccount(acc.grant_id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, display: 'flex', lineHeight: 1 }}><X size={11} /></button>
+              <button onClick={() => onRemoveAccount(acc.email)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, display: 'flex', lineHeight: 1 }}><X size={11} /></button>
             </div>
           ))}
           {accounts.length < 5 && (
@@ -514,7 +514,7 @@ function ScanningState({ accounts }) {
     <div style={{ minHeight: 'calc(100svh - 57px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 16px', textAlign: 'center' }}>
       <div style={{ display: 'flex', gap: 8, marginBottom: 32, flexWrap: 'wrap', justifyContent: 'center' }}>
         {accounts.map(acc => (
-          <div key={acc.grant_id} className="card" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 14px', borderRadius: 40 }}>
+          <div key={acc.email} className="card" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 14px', borderRadius: 40 }}>
             <div style={{ width: 22, height: 22, borderRadius: 6, background: providerColor(acc.provider), display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 9, fontWeight: 800 }}>
               {providerLabel(acc.provider).charAt(0)}
             </div>
@@ -656,7 +656,7 @@ function Dashboard({ accounts, subscriptions, scanTs, totalScanned, onAddAccount
       const res  = await fetch('/api/unsubscribe', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ grant_id: sub.grant_id, message_id: sub.latestMsgId, sender_email: sub.email }),
+        body:    JSON.stringify({ access_token: accounts.find(a => a.email === sub.account_email)?.access_token, message_id: sub.latestMsgId, sender_email: sub.email }),
       });
       const data = await res.json();
       const detail = data.method === 'http'    ? 'via one-click link'
@@ -709,7 +709,7 @@ function Dashboard({ accounts, subscriptions, scanTs, totalScanned, onAddAccount
   const searchQ = search.trim().toLowerCase();
   const filtered = rows
     .filter(s => filter === 'All' || s.category === filter)
-    .filter(s => accountFilter === 'all' || s.grant_id === accountFilter)
+    .filter(s => accountFilter === 'all' || s.account_email === accountFilter)
     .filter(s => !searchQ || s.sender.toLowerCase().includes(searchQ) || s.email.toLowerCase().includes(searchQ))
     .map(s => ({ ...s, resubscribed: unsubMemory.has(s.email.toLowerCase()) }));
   const allSelected   = filtered.length > 0 && filtered.every(s => selected.has(s.id));
@@ -719,15 +719,15 @@ function Dashboard({ accounts, subscriptions, scanTs, totalScanned, onAddAccount
     <div className="page-main">
       {/* Account tabs — always show "All" even with one account */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 20, alignItems: 'center' }}>
-        {[{ grant_id: 'all', email: 'All Inboxes', provider: null }, ...accounts].map(acc => (
-          <button key={acc.grant_id} onClick={() => setAccountFilter(acc.grant_id)}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 20, border: '1px solid', borderColor: accountFilter === acc.grant_id ? 'var(--accent)' : 'var(--border)', background: accountFilter === acc.grant_id ? 'var(--accent)' : 'transparent', color: accountFilter === acc.grant_id ? '#fff' : 'var(--text-secondary)', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>
+        {[{ email: 'all', displayName: 'All Inboxes', provider: null }, ...accounts].map(acc => (
+          <button key={acc.email} onClick={() => setAccountFilter(acc.email)}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 20, border: '1px solid', borderColor: accountFilter === acc.email ? 'var(--accent)' : 'var(--border)', background: accountFilter === acc.email ? 'var(--accent)' : 'transparent', color: accountFilter === acc.email ? '#fff' : 'var(--text-secondary)', fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>
             {acc.provider && (
               <div style={{ width: 14, height: 14, borderRadius: 4, background: providerColor(acc.provider), display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 7, fontWeight: 800 }}>
                 {providerLabel(acc.provider).charAt(0)}
               </div>
             )}
-            {acc.email}
+            {acc.displayName || acc.email}
           </button>
         ))}
         <button onClick={onAddAccount}
@@ -798,7 +798,7 @@ function Dashboard({ accounts, subscriptions, scanTs, totalScanned, onAddAccount
       {/* Category filters */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 14 }}>
         {categories.map(cat => {
-          const catCount = cat === 'All' ? 0 : rows.filter(s => s.category === cat && (accountFilter === 'all' || s.grant_id === accountFilter)).length;
+          const catCount = cat === 'All' ? 0 : rows.filter(s => s.category === cat && (accountFilter === 'all' || s.account_email === accountFilter)).length;
           return (
             <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
               <button onClick={() => setFilter(cat)}
@@ -808,7 +808,7 @@ function Dashboard({ accounts, subscriptions, scanTs, totalScanned, onAddAccount
               {cat !== 'All' && filter === cat && catCount > 0 && (
                 <button onClick={() => {
                   if (!checkLimit(catCount)) return;
-                  const ids = rows.filter(s => s.category === cat && (accountFilter === 'all' || s.grant_id === accountFilter)).map(s => s.id);
+                  const ids = rows.filter(s => s.category === cat && (accountFilter === 'all' || s.account_email === accountFilter)).map(s => s.id);
                   setRows(p => p.filter(s => !ids.includes(s.id)));
                   setActionCount(c => c + ids.length);
                   setSelected(new Set());
@@ -918,13 +918,13 @@ function useOAuthCallback(onSuccess) {
     const code   = params.get('code');
     if (!code) return;
     window.history.replaceState({}, '', window.location.pathname);
-    fetch('/api/auth/exchange', {
+    fetch('/api/auth/google-exchange', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ code }),
     })
       .then(r => r.json())
-      .then(data => { if (data.grant_id) onSuccess(data); })
+      .then(data => { if (data.access_token) onSuccess(data); })
       .catch(console.error);
   }, [onSuccess]);
 }
@@ -962,29 +962,29 @@ export default function InboxCleanerPage() {
   const handleNotifyEmailChange = (val) => { setNotifyEmailState(val); lsSet('ic_notify_email', val); };
   const handleNotifyBrowserChange = (val) => { setNotifyBrowserState(val); lsSet('ic_notify_browser', val); };
 
-  const scanAccount = useCallback(async (grantId) => {
+  const scanAccount = useCallback(async (accessToken, accountEmail) => {
     try {
-      const res  = await fetch(`/api/messages?grant_id=${grantId}`);
+      const res  = await fetch(`/api/gmail/messages?access_token=${encodeURIComponent(accessToken)}`);
       const data = await res.json();
       if (data.subscriptions) {
-        return data.subscriptions.map((s, i) => ({ ...s, id: `${grantId}-${i}`, grant_id: grantId }));
+        return data.subscriptions.map((s, i) => ({ ...s, id: `${accountEmail}-${i}`, account_email: accountEmail }));
       }
     } catch (err) { console.error(err); }
     return [];
   }, []);
 
   const handleNewGrant = useCallback(async (grantData) => {
-    const newAccount = { grant_id: grantData.grant_id, email: grantData.email, provider: grantData.provider };
+    const newAccount = { access_token: grantData.access_token, email: grantData.email, provider: grantData.provider || 'google' };
     setAccounts(prev => {
-      if (prev.find(a => a.grant_id === newAccount.grant_id)) return prev;
+      if (prev.find(a => a.email === newAccount.email)) return prev;
       const updated = [...prev, newAccount];
       saveAccounts(updated);
       return updated;
     });
     setScanning(true);
-    const subs = await scanAccount(grantData.grant_id);
+    const subs = await scanAccount(grantData.access_token, grantData.email);
     setSubscriptions(prev => {
-      const merged = [...prev.filter(s => s.grant_id !== grantData.grant_id), ...subs];
+      const merged = [...prev.filter(s => s.account_email !== grantData.email), ...subs];
       saveSubscriptions(merged);
       return merged;
     });
@@ -996,7 +996,7 @@ export default function InboxCleanerPage() {
   const handleScan = async () => {
     if (!accounts.length || scanning) return;
     setScanning(true);
-    const all = await Promise.all(accounts.map(a => scanAccount(a.grant_id)));
+    const all = await Promise.all(accounts.map(a => scanAccount(a.access_token, a.email)));
     const subs = all.flat();
     setSubscriptions(subs);
     saveSubscriptions(subs);
@@ -1018,17 +1018,17 @@ export default function InboxCleanerPage() {
   const handleConnect = async () => {
     setConnecting(true); setConnectError(null);
     try {
-      const res  = await fetch('/api/auth/url');
+      const res  = await fetch('/api/auth/google-url');
       const data = await res.json();
       if (data.url) { window.location.href = data.url; }
       else { setConnectError(data.error || 'Failed to get auth URL.'); setConnecting(false); }
     } catch { setConnectError('Could not reach the server.'); setConnecting(false); }
   };
 
-  const handleRemoveAccount = (grant_id) => {
-    setAccounts(prev => { const u = prev.filter(a => a.grant_id !== grant_id); saveAccounts(u); return u; });
+  const handleRemoveAccount = (accountEmail) => {
+    setAccounts(prev => { const u = prev.filter(a => a.email !== accountEmail); saveAccounts(u); return u; });
     setSubscriptions(prev => {
-      const u = prev.filter(s => s.grant_id !== grant_id);
+      const u = prev.filter(s => s.account_email !== accountEmail);
       saveSubscriptions(u);
       return u;
     });
