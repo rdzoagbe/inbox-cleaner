@@ -3,7 +3,7 @@ import {
   Mail, Trash2, Check, Zap, Lock, Plug, LogOut, ChevronDown,
   Plus, X, RefreshCw, ShieldBan, Settings, Bell, Moon, Sun,
   ScanLine, UserCircle, CreditCard, AlertTriangle, ChevronRight,
-  Inbox, Sliders
+  Inbox, Sliders, ArrowRight, Shield, Clock, Eye, Star, Sparkles
 } from 'lucide-react';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -324,37 +324,180 @@ function TopNav({ accounts, onAddAccount, onRemoveAccount, onLogout, onScan, sca
 }
 
 // ─── Connect CTA ──────────────────────────────────────────────────────────────
-function ConnectState({ onConnect, connecting, error }) {
+function LandingPage({ onConnect, connecting, error }) {
   return (
-    <div style={{ minHeight: 'calc(100svh - 57px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 16px', textAlign: 'center' }}>
-      <div style={{ width: 72, height: 72, borderRadius: 20, background: 'rgba(164,81,43,0.10)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent)', marginBottom: 24 }}>
-        <Plug size={28} />
-      </div>
-      <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(24px,4vw,32px)', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 10px', letterSpacing: '-0.5px' }}>Connect your inbox</h1>
-      <p style={{ fontSize: 15, color: 'var(--text-secondary)', maxWidth: 420, lineHeight: 1.7, margin: '0 0 32px' }}>
-        InboxClean scans your email headers to surface subscriptions. Connect Gmail, Outlook, Yahoo — or all three.
-      </p>
-      {error && (
-        <div style={{ background: 'rgba(169,71,64,0.08)', border: '1px solid rgba(169,71,64,0.25)', borderRadius: 10, padding: '10px 16px', marginBottom: 20, fontSize: 13, color: 'var(--red)', maxWidth: 400 }}>{error}</div>
-      )}
-      <button onClick={onConnect} disabled={connecting}
-        style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 28px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 12, fontSize: 15, fontWeight: 700, cursor: connecting ? 'wait' : 'pointer', boxShadow: '0 4px 20px rgba(164,81,43,0.28)', marginBottom: 14, opacity: connecting ? 0.75 : 1 }}>
-        <Mail size={16} /> {connecting ? 'Redirecting to Nylas…' : 'Connect your inbox'}
-      </button>
-      <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 48 }}>Gmail · Outlook · Yahoo · Any IMAP — pick your provider on the next screen</p>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, maxWidth: 600, width: '100%' }}>
-        {[
-          { icon: '🔒', title: 'Read-only access',  body: 'We only read email headers — sender and date. Never the message body.' },
-          { icon: '🚫', title: 'No data stored',    body: 'Your credentials are never stored. Tokens live in your browser session only.' },
-          { icon: '⚡', title: 'All providers',     body: 'Powered by Nylas — connect Gmail, Outlook, Yahoo and more from one screen.' },
-        ].map(f => (
-          <div key={f.title} className="card" style={{ padding: '16px 14px', textAlign: 'left' }}>
-            <div style={{ fontSize: 20, marginBottom: 8 }}>{f.icon}</div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>{f.title}</div>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6 }}>{f.body}</div>
+    <div style={{ minHeight: '100svh', background: 'var(--bg)' }}>
+      {/* Sticky nav */}
+      <nav style={{ position: 'sticky', top: 0, zIndex: 40, background: 'var(--bg-card)', borderBottom: '1px solid var(--border)', backdropFilter: 'blur(12px)' }}>
+        <div style={{ maxWidth: 960, margin: '0 auto', padding: '0 16px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div className="logo">Inbox<span className="acc">Clean</span></div>
+          <button onClick={onConnect} disabled={connecting}
+            style={{ padding: '8px 18px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: connecting ? 'wait' : 'pointer' }}>
+            Get Started
+          </button>
+        </div>
+      </nav>
+
+      {/* Hero */}
+      <section style={{ maxWidth: 960, margin: '0 auto', padding: '80px 16px 60px', textAlign: 'center' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(164,81,43,0.08)', border: '1px solid rgba(164,81,43,0.18)', borderRadius: 20, padding: '5px 14px', marginBottom: 24 }}>
+          <Sparkles size={13} color="var(--accent)" />
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent)' }}>Stop the inbox clutter</span>
+        </div>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(32px,6vw,56px)', fontWeight: 900, color: 'var(--text-primary)', margin: '0 0 16px', letterSpacing: '-1.5px', lineHeight: 1.1 }}>
+          Unsubscribe from junk<br />in <span style={{ color: 'var(--accent)' }}>one click</span>
+        </h1>
+        <p style={{ fontSize: 'clamp(16px,2.5vw,20px)', color: 'var(--text-secondary)', maxWidth: 540, margin: '0 auto 36px', lineHeight: 1.7 }}>
+          InboxCleaner scans your email, finds every subscription and newsletter, and lets you unsubscribe from all of them — instantly.
+        </p>
+
+        {error && (
+          <div style={{ background: 'rgba(169,71,64,0.08)', border: '1px solid rgba(169,71,64,0.25)', borderRadius: 10, padding: '10px 16px', marginBottom: 20, fontSize: 13, color: 'var(--red)', maxWidth: 400, margin: '0 auto 20px' }}>{error}</div>
+        )}
+
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
+          <button onClick={onConnect} disabled={connecting}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 32px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 14, fontSize: 16, fontWeight: 700, cursor: connecting ? 'wait' : 'pointer', boxShadow: '0 6px 28px rgba(164,81,43,0.30)', opacity: connecting ? 0.75 : 1, transition: 'transform 0.15s', transform: 'translateY(0)' }}
+            onMouseDown={e => e.currentTarget.style.transform = 'translateY(1px)'}
+            onMouseUp={e => e.currentTarget.style.transform = 'translateY(0)'}>
+            <Mail size={17} /> {connecting ? 'Connecting...' : 'Connect your inbox — free'}
+            <ArrowRight size={15} />
+          </button>
+        </div>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Gmail, Outlook, Yahoo — 5 free unsubscribes, no credit card needed</p>
+
+        {/* Mock UI preview */}
+        <div style={{ maxWidth: 700, margin: '48px auto 0', borderRadius: 16, overflow: 'hidden', border: '1px solid var(--border)', boxShadow: '0 12px 48px rgba(16,24,43,0.08)' }}>
+          <div style={{ background: 'var(--bg-card)', padding: '10px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ff5f56' }} />
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ffbd2e' }} />
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#27c93f' }} />
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 8 }}>inbox-cleaner.vercel.app</span>
           </div>
-        ))}
-      </div>
+          <div style={{ background: 'var(--bg)', padding: '20px 16px' }}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+              {['All', 'Marketing', 'Newsletter', 'Social'].map((c, i) => (
+                <span key={c} style={{ padding: '4px 12px', borderRadius: 16, fontSize: 11, fontWeight: 500, background: i === 0 ? 'var(--accent)' : 'transparent', color: i === 0 ? '#fff' : 'var(--text-muted)', border: `1px solid ${i === 0 ? 'var(--accent)' : 'var(--border)'}` }}>{c}</span>
+              ))}
+            </div>
+            {[
+              { name: 'LinkedIn Updates', cat: 'Social', freq: 'Daily', count: 84, color: '#0A66C2' },
+              { name: 'Amazon Deals', cat: 'Promotions', freq: 'Weekly', count: 32, color: '#FF9900' },
+              { name: 'Morning Brew', cat: 'Newsletter', freq: 'Daily', count: 60, color: '#B45309' },
+            ].map((row, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'var(--bg-card)', borderRadius: 10, marginBottom: 6, border: '1px solid var(--border)' }}>
+                <div style={{ width: 28, height: 28, borderRadius: 7, background: row.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, fontWeight: 800, flexShrink: 0 }}>{row.name.charAt(0)}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{row.name}</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{row.freq} · {row.count} emails</div>
+                </div>
+                <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 10, fontWeight: 600, background: 'rgba(169,65,64,0.10)', color: 'var(--red)' }}>Unsub</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ maxWidth: 960, margin: '0 auto', padding: '64px 16px', textAlign: 'center' }}>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(22px,4vw,32px)', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 12px', letterSpacing: '-0.5px' }}>How it works</h2>
+          <p style={{ fontSize: 15, color: 'var(--text-muted)', marginBottom: 40, maxWidth: 460, margin: '0 auto 40px' }}>Three steps. Under two minutes. Zero spam afterward.</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 24 }}>
+            {[
+              { step: '1', icon: Plug, title: 'Connect', desc: 'Sign in with Gmail, Outlook, or Yahoo. We only read email headers — never message content.' },
+              { step: '2', icon: ScanLine, title: 'Scan', desc: 'We analyze up to 2,000 emails to find every subscription and newsletter you receive.' },
+              { step: '3', icon: Trash2, title: 'Clean', desc: 'Review the list, then unsubscribe from junk with one click — or wipe an entire category.' },
+            ].map(s => (
+              <div key={s.step} style={{ padding: '32px 20px', borderRadius: 16, border: '1px solid var(--border)', background: 'var(--bg)', position: 'relative' }}>
+                <div style={{ position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)', width: 28, height: 28, borderRadius: '50%', background: 'var(--accent)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800 }}>{s.step}</div>
+                <s.icon size={24} color="var(--accent)" style={{ marginBottom: 14 }} />
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 8px' }}>{s.title}</h3>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.7, margin: 0 }}>{s.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section style={{ maxWidth: 960, margin: '0 auto', padding: '64px 16px' }}>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(22px,4vw,32px)', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 40px', letterSpacing: '-0.5px', textAlign: 'center' }}>Why InboxCleaner?</h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+          {[
+            { icon: Shield, title: 'Privacy-first', desc: 'We read email headers only — sender, date, subject. Never your message body. Tokens stay in your browser.' },
+            { icon: Zap, title: 'Real unsubscribe', desc: 'Not just removing from a list — we send actual RFC 8058 one-click unsubscribes and mailto requests.' },
+            { icon: Clock, title: '2-minute cleanup', desc: 'Connect, scan, and clean — average users remove 30+ subscriptions in their first session.' },
+            { icon: Eye, title: 'Re-subscribe detection', desc: 'If a sender you unsubscribed from emails you again, we flag it so you can escalate or block.' },
+            { icon: Star, title: 'Export & own your data', desc: 'Download your subscription list as CSV anytime. Your data, your control.' },
+            { icon: RefreshCw, title: 'Multi-inbox support', desc: 'Connect Gmail, Outlook, Yahoo — scan them all from one dashboard.' },
+          ].map(f => (
+            <div key={f.title} className="card" style={{ padding: '20px 16px' }}>
+              <f.icon size={20} color="var(--accent)" style={{ marginBottom: 12 }} />
+              <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 6px' }}>{f.title}</h3>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.7, margin: 0 }}>{f.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Pricing */}
+      <section style={{ background: 'var(--bg-card)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ maxWidth: 700, margin: '0 auto', padding: '64px 16px', textAlign: 'center' }}>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(22px,4vw,32px)', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 12px', letterSpacing: '-0.5px' }}>Simple pricing</h2>
+          <p style={{ fontSize: 15, color: 'var(--text-muted)', marginBottom: 32 }}>Start free, upgrade when you need more.</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+            {/* Free */}
+            <div className="card" style={{ padding: '28px 20px', textAlign: 'left' }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Free</div>
+              <div style={{ fontSize: 'clamp(28px,4vw,36px)', fontWeight: 900, color: 'var(--text-primary)', marginBottom: 4 }}>$0</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>forever</div>
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {['5 unsubscribes per scan', 'All inbox providers', 'Search & filter', 'CSV export'].map(f => (
+                  <li key={f} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)' }}>
+                    <Check size={14} color="var(--green)" /> {f}
+                  </li>
+                ))}
+              </ul>
+              <button onClick={onConnect} style={{ width: '100%', padding: '10px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer' }}>
+                Get started
+              </button>
+            </div>
+            {/* Pro */}
+            <div className="card" style={{ padding: '28px 20px', textAlign: 'left', border: '2px solid var(--accent)', position: 'relative' }}>
+              <div style={{ position: 'absolute', top: -12, right: 16, background: 'var(--accent)', color: '#fff', padding: '3px 12px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>Popular</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--accent)', marginBottom: 4 }}>Pro</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 4 }}>
+                <span style={{ fontSize: 'clamp(28px,4vw,36px)', fontWeight: 900, color: 'var(--text-primary)' }}>$10</span>
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 20 }}>one-time payment</div>
+              <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {['Unlimited unsubscribes', 'All inbox providers', 'Re-subscribe detection', 'Priority support', 'Auto-scan scheduling'].map(f => (
+                  <li key={f} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-secondary)' }}>
+                    <Check size={14} color="var(--green)" /> {f}
+                  </li>
+                ))}
+              </ul>
+              <button onClick={async () => {
+                try {
+                  const res = await fetch('/api/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+                  const data = await res.json();
+                  if (data.url) window.location.href = data.url;
+                } catch {}
+              }}
+                style={{ width: '100%', padding: '10px', background: 'var(--accent)', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, color: '#fff', cursor: 'pointer', boxShadow: '0 4px 16px rgba(164,81,43,0.25)' }}>
+                Upgrade to Pro
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer style={{ maxWidth: 960, margin: '0 auto', padding: '32px 16px', textAlign: 'center' }}>
+        <div className="logo" style={{ fontSize: 18, marginBottom: 8 }}>Inbox<span className="acc">Clean</span></div>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>Clean your inbox in minutes, not hours.</p>
+      </footer>
     </div>
   );
 }
@@ -427,7 +570,14 @@ function PaywallModal({ onClose, onUpgrade }) {
           <span style={{ fontSize: 'clamp(30px,5vw,38px)', fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>$10</span>
           <span style={{ color: 'var(--text-muted)', fontSize: 14, marginLeft: 6 }}>one-time · no subscription</span>
         </div>
-        <button onClick={onUpgrade} style={{ width: '100%', padding: 14, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 600, cursor: 'pointer', marginBottom: 10 }}>Unlock for $10</button>
+        <button onClick={async () => {
+          try {
+            const res = await fetch('/api/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+            const data = await res.json();
+            if (data.url) { window.location.href = data.url; return; }
+          } catch {}
+          onUpgrade();
+        }} style={{ width: '100%', padding: 14, background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 600, cursor: 'pointer', marginBottom: 10 }}>Unlock for $10</button>
         <button onClick={onClose} style={{ width: '100%', padding: 12, background: 'transparent', color: 'var(--text-muted)', border: 'none', fontSize: 14, cursor: 'pointer' }}>Maybe later</button>
       </div>
     </div>
@@ -798,6 +948,15 @@ export default function InboxCleanerPage() {
   // Apply theme on mount and on change
   useEffect(() => { applyTheme(theme); }, [theme]);
 
+  // Handle Stripe success redirect
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('upgraded') === 'true') {
+      lsSet('ic_upgraded', true);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
   const handleThemeChange = (val) => { setThemeState(val); lsSet('ic_theme', val); applyTheme(val); };
   const handleScanFreqChange = (val) => { setScanFreqState(val); lsSet('ic_scanfreq', val); };
   const handleNotifyEmailChange = (val) => { setNotifyEmailState(val); lsSet('ic_notify_email', val); };
@@ -887,23 +1046,25 @@ export default function InboxCleanerPage() {
 
   return (
     <div style={{ minHeight: '100svh', background: 'var(--bg)' }}>
-      <TopNav
-        accounts={accounts}
-        onAddAccount={handleConnect}
-        onRemoveAccount={handleRemoveAccount}
-        onLogout={() => { setAccounts([]); saveAccounts([]); setUserMenuOpen(false); }}
-        onScan={handleScan}
-        scanning={scanning}
-        userMenuOpen={userMenuOpen}
-        setUserMenuOpen={e => { if (e?.stopPropagation) e.stopPropagation(); setUserMenuOpen(v => !v); }}
-        onOpenSettings={() => { setUserMenuOpen(false); setShowSettings(true); }}
-      />
+      {!scanning && !hasAccounts && (
+        <LandingPage onConnect={handleConnect} connecting={connecting} error={connectError} />
+      )}
+
+      {(hasAccounts || scanning) && (
+        <TopNav
+          accounts={accounts}
+          onAddAccount={handleConnect}
+          onRemoveAccount={handleRemoveAccount}
+          onLogout={() => { setAccounts([]); saveAccounts([]); setUserMenuOpen(false); }}
+          onScan={handleScan}
+          scanning={scanning}
+          userMenuOpen={userMenuOpen}
+          setUserMenuOpen={e => { if (e?.stopPropagation) e.stopPropagation(); setUserMenuOpen(v => !v); }}
+          onOpenSettings={() => { setUserMenuOpen(false); setShowSettings(true); }}
+        />
+      )}
 
       {scanning && <ScanningState accounts={accounts} />}
-
-      {!scanning && !hasAccounts && (
-        <ConnectState onConnect={handleConnect} connecting={connecting} error={connectError} />
-      )}
 
       {!scanning && hasAccounts && (
         <div className="page" style={{ paddingTop: 28 }}>
