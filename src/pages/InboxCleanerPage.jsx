@@ -653,7 +653,7 @@ function Dashboard({ accounts, subscriptions, scanTs, totalScanned, onAddAccount
     if (!checkLimit()) return;
     setPendingRows(p => new Set([...p, sub.id]));
     try {
-      const res  = await fetch('/api/unsubscribe', {
+      const res  = await fetch('/api/gmail/unsubscribe', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ access_token: accounts.find(a => a.email === sub.account_email)?.access_token, message_id: sub.latestMsgId, sender_email: sub.email }),
@@ -911,6 +911,21 @@ function Dashboard({ accounts, subscriptions, scanTs, totalScanned, onAddAccount
   );
 }
 
+// ─── Token refresh ───────────────────────────────────────────────────────────
+async function refreshAccessToken(account) {
+  if (!account.refresh_token) return account.access_token;
+  try {
+    const res = await fetch('/api/auth/google-refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: account.refresh_token }),
+    });
+    const data = await res.json();
+    if (data.access_token) return data.access_token;
+  } catch {}
+  return account.access_token;
+}
+
 // ─── OAuth callback hook ──────────────────────────────────────────────────────
 function useOAuthCallback(onSuccess) {
   useEffect(() => {
@@ -962,19 +977,28 @@ export default function InboxCleanerPage() {
   const handleNotifyEmailChange = (val) => { setNotifyEmailState(val); lsSet('ic_notify_email', val); };
   const handleNotifyBrowserChange = (val) => { setNotifyBrowserState(val); lsSet('ic_notify_browser', val); };
 
-  const scanAccount = useCallback(async (accessToken, accountEmail) => {
+  const scanAccount = useCallback(async (account) => {
     try {
-      const res  = await fetch(`/api/gmail/messages?access_token=${encodeURIComponent(accessToken)}`);
+      const token = await refreshAccessToken(account);
+      if (token !== account.access_token) {
+        setAccounts(prev => {
+          const updated = prev.map(a => a.email === account.email ? { ...a, access_token: token } : a);
+          saveAccounts(updated);
+          return updated;
+        });
+      }
+      const res  = await fetch(`/api/gmail/messages?access_token=${encodeURIComponent(token)}`);
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Scan failed');
       if (data.subscriptions) {
-        return data.subscriptions.map((s, i) => ({ ...s, id: `${accountEmail}-${i}`, account_email: accountEmail }));
+        return data.subscriptions.map((s, i) => ({ ...s, id: `${account.email}-${i}`, account_email: account.email }));
       }
     } catch (err) { console.error(err); }
     return [];
   }, []);
 
   const handleNewGrant = useCallback(async (grantData) => {
-    const newAccount = { access_token: grantData.access_token, email: grantData.email, provider: grantData.provider || 'google' };
+    const newAccount = { access_token: grantData.access_token, refresh_token: grantData.refresh_token, email: grantData.email, provider: grantData.provider || 'google' };
     setAccounts(prev => {
       if (prev.find(a => a.email === newAccount.email)) return prev;
       const updated = [...prev, newAccount];
@@ -982,7 +1006,7 @@ export default function InboxCleanerPage() {
       return updated;
     });
     setScanning(true);
-    const subs = await scanAccount(grantData.access_token, grantData.email);
+    const subs = await scanAccount(newAccount);
     setSubscriptions(prev => {
       const merged = [...prev.filter(s => s.account_email !== grantData.email), ...subs];
       saveSubscriptions(merged);
@@ -996,7 +1020,7 @@ export default function InboxCleanerPage() {
   const handleScan = async () => {
     if (!accounts.length || scanning) return;
     setScanning(true);
-    const all = await Promise.all(accounts.map(a => scanAccount(a.access_token, a.email)));
+    const all = await Promise.all(accounts.map(a => scanAccount(a)));
     const subs = all.flat();
     setSubscriptions(subs);
     saveSubscriptions(subs);
