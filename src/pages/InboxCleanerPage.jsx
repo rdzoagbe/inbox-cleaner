@@ -1000,8 +1000,10 @@ export default function InboxCleanerPage() {
   const handleNewGrant = useCallback(async (grantData) => {
     const newAccount = { access_token: grantData.access_token, refresh_token: grantData.refresh_token, email: grantData.email, provider: grantData.provider || 'google' };
     setAccounts(prev => {
-      if (prev.find(a => a.email === newAccount.email)) return prev;
-      const updated = [...prev, newAccount];
+      const existing = prev.find(a => a.email === newAccount.email);
+      const updated = existing
+        ? prev.map(a => a.email === newAccount.email ? newAccount : a)
+        : [...prev, newAccount];
       saveAccounts(updated);
       return updated;
     });
