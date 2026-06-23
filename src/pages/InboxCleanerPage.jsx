@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const MOCK_USER   = { name: 'Roland Dzoagbe', email: 'accensionday@hotmail.fr', avatar: 'RD' };
 const FREE_LIMIT  = 5;
 
 const PROVIDER_COLORS = { google: '#EA4335', microsoft: '#0078D4', yahoo: '#6001D2', imap: '#6e6b80' };
@@ -621,7 +620,7 @@ function BulkActionBar({ count, onBulkUnsubscribe, onBulkBlock, onClear }) {
 }
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
-function Dashboard({ accounts, subscriptions, scanTs, totalScanned, onAddAccount, onScan, scanning }) {
+function Dashboard({ accounts, subscriptions, onAddAccount, onScan, scanning }) {
   const [rows, setRows]               = useState(subscriptions);
   const [selected, setSelected]       = useState(new Set());
   const [actionCount, setActionCount] = useState(0);
@@ -634,6 +633,11 @@ function Dashboard({ accounts, subscriptions, scanTs, totalScanned, onAddAccount
   const [pendingRows, setPendingRows] = useState(new Set());
   const [search, setSearch]           = useState('');
   const [unsubMemory, setUnsubMemory] = useState(loadUnsubscribed);
+
+  const showToast = (sender, action) => {
+    setToast({ sender, action });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const checkLimit = (needed = 1) => {
     if (!upgraded && actionCount + needed > FREE_LIMIT) { setShowPaywall(true); return false; }
