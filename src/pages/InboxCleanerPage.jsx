@@ -171,6 +171,7 @@ function SettingsModal({ accounts, onClose, onRemoveAccount, onAddAccount,
                 <div style={{ marginBottom: 20 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 10 }}>Scan Frequency</div>
                   {[['manual', 'Manual only', 'Scan when you click the button'],
+                    ['30min', 'Every 30 minutes', 'Auto-scan while this tab is open'],
                     ['daily', 'Daily', 'Auto-scan every morning'],
                     ['weekly', 'Weekly', 'Auto-scan every Monday']].map(([val, label, desc]) => (
                     <label key={val} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, border: '1px solid', borderColor: scanFreq === val ? 'var(--accent)' : 'var(--border)', background: scanFreq === val ? 'rgba(164,81,43,0.05)' : 'transparent', cursor: 'pointer', marginBottom: 8 }}>
@@ -1031,6 +1032,7 @@ export default function InboxCleanerPage() {
     setSubscriptions(subs);
     saveSubscriptions(subs);
     setScanning(false);
+    localStorage.setItem('ic_last_scan', String(Date.now()));
     if (notifyBrowser && Notification.permission === 'granted') {
       new Notification('InboxCleaner scan complete', {
         body: `Found ${subs.length} subscription${subs.length !== 1 ? 's' : ''} across ${accounts.length} inbox${accounts.length !== 1 ? 'es' : ''}.`,
@@ -1044,6 +1046,21 @@ export default function InboxCleanerPage() {
     if (accounts.length > 0 && subscriptions.length === 0) handleScan();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Periodic auto-sync while the tab is open, based on the Scan Frequency setting
+  useEffect(() => {
+    const FREQ_MS = { '30min': 30 * 60 * 1000, daily: 24 * 60 * 60 * 1000, weekly: 7 * 24 * 60 * 60 * 1000 };
+    const intervalMs = FREQ_MS[scanFreq];
+    if (!intervalMs || !accounts.length) return;
+
+    const tick = () => {
+      const last = Number(localStorage.getItem('ic_last_scan') || 0);
+      if (Date.now() - last >= intervalMs) handleScan();
+    };
+    const id = setInterval(tick, 60 * 1000);
+    return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scanFreq, accounts.length]);
 
   const handleConnect = async () => {
     setConnecting(true); setConnectError(null);
