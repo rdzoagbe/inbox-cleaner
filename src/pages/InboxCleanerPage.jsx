@@ -958,6 +958,7 @@ export default function InboxCleanerPage() {
   const [connectError, setConnectError]   = useState(null);
   const [userMenuOpen, setUserMenuOpen]   = useState(false);
   const [showSettings, setShowSettings]   = useState(false);
+  const [authError, setAuthError]         = useState(false);
 
   // Persisted settings
   const [theme, setThemeState]           = useState(() => ls('ic_theme', 'system'));
@@ -994,8 +995,10 @@ export default function InboxCleanerPage() {
       }
       const res  = await fetch(`/api/gmail/messages?access_token=${encodeURIComponent(token)}`);
       const data = await res.json();
+      if (res.status === 401) { setAuthError(true); throw new Error('Google session expired'); }
       if (!res.ok) throw new Error(data.error || 'Scan failed');
       if (data.subscriptions) {
+        setAuthError(false);
         return data.subscriptions.map((s, i) => ({ ...s, id: `${account.email}-${i}`, account_email: account.email }));
       }
     } catch (err) { console.error(err); }
@@ -1003,6 +1006,7 @@ export default function InboxCleanerPage() {
   }, []);
 
   const handleNewGrant = useCallback(async (grantData) => {
+    setAuthError(false);
     const newAccount = { access_token: grantData.access_token, refresh_token: grantData.refresh_token, email: grantData.email, provider: grantData.provider || 'google' };
     setAccounts(prev => {
       const existing = prev.find(a => a.email === newAccount.email);
@@ -1051,7 +1055,7 @@ export default function InboxCleanerPage() {
   useEffect(() => {
     const FREQ_MS = { '30min': 30 * 60 * 1000, daily: 24 * 60 * 60 * 1000, weekly: 7 * 24 * 60 * 60 * 1000 };
     const intervalMs = FREQ_MS[scanFreq];
-    if (!intervalMs || !accounts.length) return;
+    if (!intervalMs || !accounts.length || authError) return;
 
     const tick = () => {
       const last = Number(localStorage.getItem('ic_last_scan') || 0);
@@ -1060,7 +1064,7 @@ export default function InboxCleanerPage() {
     const id = setInterval(tick, 60 * 1000);
     return () => clearInterval(id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scanFreq, accounts.length]);
+  }, [scanFreq, accounts.length, authError]);
 
   const handleConnect = async () => {
     setConnecting(true); setConnectError(null);
@@ -1109,6 +1113,19 @@ export default function InboxCleanerPage() {
           setUserMenuOpen={e => { if (e?.stopPropagation) e.stopPropagation(); setUserMenuOpen(v => !v); }}
           onOpenSettings={() => { setUserMenuOpen(false); setShowSettings(true); }}
         />
+      )}
+
+      {!scanning && hasAccounts && authError && (
+        <div className="page" style={{ paddingTop: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', padding: '12px 16px', borderRadius: 12, border: '1px solid var(--border)', background: 'rgba(220,80,60,0.08)' }}>
+            <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>
+              Your Google session expired. Reconnect to keep scanning your inbox.
+            </div>
+            <button onClick={handleConnect} disabled={connecting} style={{ fontSize: 13, fontWeight: 600, color: '#fff', background: 'var(--accent)', border: 'none', borderRadius: 8, padding: '8px 14px', cursor: 'pointer' }}>
+              {connecting ? 'Connecting…' : 'Reconnect Google'}
+            </button>
+          </div>
+        </div>
       )}
 
       {scanning && <ScanningState accounts={accounts} />}
