@@ -20,6 +20,7 @@ const CATEGORY_STYLES = {
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+const apiBase = p => (p === 'microsoft' ? '/api/outlook' : '/api/gmail');
 const providerColor = p => PROVIDER_COLORS[p] || '#6e6b80';
 const providerLabel = p => PROVIDER_LABELS[p] || 'Email';
 const saveAccounts      = a => { try { localStorage.setItem('ic_accounts', JSON.stringify(a)); } catch {} };
@@ -331,7 +332,7 @@ function LandingPage({ onConnect, connecting, error }) {
       <nav style={{ position: 'sticky', top: 0, zIndex: 40, background: 'var(--bg-card)', borderBottom: '1px solid var(--border)', backdropFilter: 'blur(12px)' }}>
         <div style={{ maxWidth: 960, margin: '0 auto', padding: '0 16px', height: 56, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div className="logo">Inbox<span className="acc">Clean</span></div>
-          <button onClick={onConnect} disabled={connecting}
+          <button onClick={() => onConnect('google')} disabled={connecting}
             style={{ padding: '8px 18px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: connecting ? 'wait' : 'pointer' }}>
             Get Started
           </button>
@@ -356,15 +357,19 @@ function LandingPage({ onConnect, connecting, error }) {
         )}
 
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 16 }}>
-          <button onClick={onConnect} disabled={connecting}
+          <button onClick={() => onConnect('google')} disabled={connecting}
             style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 32px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 14, fontSize: 16, fontWeight: 700, cursor: connecting ? 'wait' : 'pointer', boxShadow: '0 6px 28px rgba(164,81,43,0.30)', opacity: connecting ? 0.75 : 1, transition: 'transform 0.15s', transform: 'translateY(0)' }}
             onMouseDown={e => e.currentTarget.style.transform = 'translateY(1px)'}
             onMouseUp={e => e.currentTarget.style.transform = 'translateY(0)'}>
             <Mail size={17} /> {connecting ? 'Connecting...' : 'Connect your inbox — free'}
             <ArrowRight size={15} />
           </button>
+          <button onClick={() => onConnect('microsoft')} disabled={connecting}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 24px', background: 'var(--bg-card)', color: 'var(--text-primary)', border: '1px solid var(--border)', borderRadius: 14, fontSize: 15, fontWeight: 600, cursor: connecting ? 'wait' : 'pointer' }}>
+            <Mail size={17} /> Outlook / Hotmail
+          </button>
         </div>
-        <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Gmail, Outlook, Yahoo — 5 free unsubscribes, no credit card needed</p>
+        <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>Gmail and Outlook / Hotmail — 5 free unsubscribes, no credit card needed</p>
 
         {/* Mock UI preview */}
         <div style={{ maxWidth: 700, margin: '48px auto 0', borderRadius: 16, overflow: 'hidden', border: '1px solid var(--border)', boxShadow: '0 12px 48px rgba(16,24,43,0.08)' }}>
@@ -405,7 +410,7 @@ function LandingPage({ onConnect, connecting, error }) {
           <p style={{ fontSize: 15, color: 'var(--text-muted)', marginBottom: 40, maxWidth: 460, margin: '0 auto 40px' }}>Three steps. Under two minutes. Zero spam afterward.</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 24 }}>
             {[
-              { step: '1', icon: Plug, title: 'Connect', desc: 'Sign in with Gmail, Outlook, or Yahoo. We only read email headers — never message content.' },
+              { step: '1', icon: Plug, title: 'Connect', desc: 'Sign in with Gmail or Outlook / Hotmail. We only read email headers — never message content.' },
               { step: '2', icon: ScanLine, title: 'Scan', desc: 'We analyze up to 2,000 emails to find every subscription and newsletter you receive.' },
               { step: '3', icon: Trash2, title: 'Clean', desc: 'Review the list, then unsubscribe from junk with one click — or wipe an entire category.' },
             ].map(s => (
@@ -430,7 +435,7 @@ function LandingPage({ onConnect, connecting, error }) {
             { icon: Clock, title: '2-minute cleanup', desc: 'Connect, scan, and clean — average users remove 30+ subscriptions in their first session.' },
             { icon: Eye, title: 'Re-subscribe detection', desc: 'If a sender you unsubscribed from emails you again, we flag it so you can escalate or block.' },
             { icon: Star, title: 'Export & own your data', desc: 'Download your subscription list as CSV anytime. Your data, your control.' },
-            { icon: RefreshCw, title: 'Multi-inbox support', desc: 'Connect Gmail, Outlook, Yahoo — scan them all from one dashboard.' },
+            { icon: RefreshCw, title: 'Multi-inbox support', desc: 'Connect Gmail and Outlook / Hotmail — scan them all from one dashboard.' },
           ].map(f => (
             <div key={f.title} className="card" style={{ padding: '20px 16px' }}>
               <f.icon size={20} color="var(--accent)" style={{ marginBottom: 12 }} />
@@ -459,7 +464,7 @@ function LandingPage({ onConnect, connecting, error }) {
                   </li>
                 ))}
               </ul>
-              <button onClick={onConnect} style={{ width: '100%', padding: '10px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer' }}>
+              <button onClick={() => onConnect('google')} style={{ width: '100%', padding: '10px', background: 'transparent', border: '1px solid var(--border)', borderRadius: 10, fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer' }}>
                 Get started
               </button>
             </div>
@@ -560,7 +565,7 @@ function PaywallModal({ onClose, onUpgrade }) {
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(20px,4vw,26px)', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>Unlock Bulk Actions</h2>
         <p style={{ color: 'var(--text-secondary)', fontSize: 14, lineHeight: 1.7, marginBottom: 24 }}>You've used all 5 free actions. Pay once to bulk-remove and block every unwanted sender — no subscription, ever.</p>
         <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 18px', marginBottom: 24, textAlign: 'left' }}>
-          {['Unlimited unsubscribes & blocks','Bulk select and action all at once','Auto-scan new emails weekly','Works with Gmail, Outlook and Yahoo'].map(f => (
+          {['Unlimited unsubscribes & blocks','Bulk select and action all at once','Auto-scan new emails weekly','Works with Gmail and Outlook / Hotmail'].map(f => (
             <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', fontSize: 13, color: 'var(--text-secondary)' }}>
               <span style={{ color: 'var(--green)', flexShrink: 0 }}><Check size={13} /></span>{f}
             </div>
@@ -658,7 +663,7 @@ function Dashboard({ accounts, subscriptions, onAddAccount, onScan, scanning }) 
     if (!checkLimit()) return;
     setPendingRows(p => new Set([...p, sub.id]));
     try {
-      const res  = await fetch('/api/gmail/unsubscribe', {
+      const res  = await fetch(`${apiBase(accounts.find(a => a.email === sub.account_email)?.provider)}/unsubscribe`, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ access_token: accounts.find(a => a.email === sub.account_email)?.access_token, message_id: sub.latestMsgId, sender_email: sub.email }),
@@ -920,7 +925,7 @@ function Dashboard({ accounts, subscriptions, onAddAccount, onScan, scanning }) 
 async function refreshAccessToken(account) {
   if (!account.refresh_token) return account.access_token;
   try {
-    const res = await fetch('/api/auth/google-refresh', {
+    const res = await fetch(account.provider === 'microsoft' ? '/api/auth/microsoft-refresh' : '/api/auth/google-refresh', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh_token: account.refresh_token }),
@@ -937,8 +942,9 @@ function useOAuthCallback(onSuccess) {
     const params = new URLSearchParams(window.location.search);
     const code   = params.get('code');
     if (!code) return;
+    const provider = params.get('state') === 'microsoft' ? 'microsoft' : 'google';
     window.history.replaceState({}, '', window.location.pathname);
-    fetch('/api/auth/google-exchange', {
+    fetch(`/api/auth/${provider}-exchange`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ code }),
@@ -959,6 +965,7 @@ export default function InboxCleanerPage() {
   const [userMenuOpen, setUserMenuOpen]   = useState(false);
   const [showSettings, setShowSettings]   = useState(false);
   const [authError, setAuthError]         = useState(false);
+  const [showPicker, setShowPicker]       = useState(false);
 
   // Persisted settings
   const [theme, setThemeState]           = useState(() => ls('ic_theme', 'system'));
@@ -993,9 +1000,9 @@ export default function InboxCleanerPage() {
           return updated;
         });
       }
-      const res  = await fetch(`/api/gmail/messages?access_token=${encodeURIComponent(token)}`);
+      const res  = await fetch(`${apiBase(account.provider)}/messages?access_token=${encodeURIComponent(token)}`);
       const data = await res.json();
-      if (res.status === 401) { setAuthError(true); throw new Error('Google session expired'); }
+      if (res.status === 401) { setAuthError(account.provider || 'google'); throw new Error('Session expired'); }
       if (!res.ok) throw new Error(data.error || 'Scan failed');
       if (data.subscriptions) {
         setAuthError(false);
@@ -1066,10 +1073,13 @@ export default function InboxCleanerPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scanFreq, accounts.length, authError]);
 
-  const handleConnect = async () => {
+  const handleConnect = () => setShowPicker(true);
+
+  const connectProvider = async (provider = 'google') => {
+    setShowPicker(false);
     setConnecting(true); setConnectError(null);
     try {
-      const res  = await fetch('/api/auth/google-url');
+      const res  = await fetch(`/api/auth/${provider === 'microsoft' ? 'microsoft' : 'google'}-url`);
       const data = await res.json();
       if (data.url) { window.location.href = data.url; }
       else { setConnectError(data.error || 'Failed to get auth URL.'); setConnecting(false); }
@@ -1098,7 +1108,7 @@ export default function InboxCleanerPage() {
   return (
     <div style={{ minHeight: '100svh', background: 'var(--bg)' }}>
       {!scanning && !hasAccounts && (
-        <LandingPage onConnect={handleConnect} connecting={connecting} error={connectError} />
+        <LandingPage onConnect={connectProvider} connecting={connecting} error={connectError} />
       )}
 
       {(hasAccounts || scanning) && (
@@ -1119,11 +1129,26 @@ export default function InboxCleanerPage() {
         <div className="page" style={{ paddingTop: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', padding: '12px 16px', borderRadius: 12, border: '1px solid var(--border)', background: 'rgba(220,80,60,0.08)' }}>
             <div style={{ fontSize: 13, color: 'var(--text-primary)' }}>
-              Your Google session expired. Reconnect to keep scanning your inbox.
+              Your {authError === 'microsoft' ? 'Outlook' : 'Google'} session expired. Reconnect to keep scanning your inbox.
             </div>
-            <button onClick={handleConnect} disabled={connecting} style={{ fontSize: 13, fontWeight: 600, color: '#fff', background: 'var(--accent)', border: 'none', borderRadius: 8, padding: '8px 14px', cursor: 'pointer' }}>
-              {connecting ? 'Connecting…' : 'Reconnect Google'}
+            <button onClick={() => connectProvider(authError)} disabled={connecting} style={{ fontSize: 13, fontWeight: 600, color: '#fff', background: 'var(--accent)', border: 'none', borderRadius: 8, padding: '8px 14px', cursor: 'pointer' }}>
+              {connecting ? 'Connecting…' : `Reconnect ${authError === 'microsoft' ? 'Outlook' : 'Google'}`}
             </button>
+          </div>
+        </div>
+      )}
+
+      {showPicker && (
+        <div onClick={() => setShowPicker(false)} style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 16, padding: 24, width: '100%', maxWidth: 340 }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 14 }}>Add an inbox</div>
+            {[['google', 'Gmail'], ['microsoft', 'Outlook / Hotmail']].map(([id, label]) => (
+              <button key={id} onClick={() => connectProvider(id)}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', marginBottom: 8, background: 'transparent', border: '1px solid var(--border)', borderRadius: 10, fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer' }}>
+                <span style={{ width: 22, height: 22, borderRadius: 6, background: providerColor(id), display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 10, fontWeight: 800 }}>{label.charAt(0)}</span>
+                {label}
+              </button>
+            ))}
           </div>
         </div>
       )}
